@@ -64,6 +64,8 @@ AMDEP_FALSE = @AMDEP_FALSE@
 AMDEP_TRUE = @AMDEP_TRUE@
 AMTAR = @AMTAR@
 AR = @AR@
+ASLLIB = @ASLLIB@
+ASL_CPPFLAGS = @ASL_CPPFLAGS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -84,6 +86,8 @@ COINUTILSOBJDIR = @COINUTILSOBJDIR@
 COINUTILSSRCDIR = @COINUTILSSRCDIR@
 COIN_DEBUG_FALSE = @COIN_DEBUG_FALSE@
 COIN_DEBUG_TRUE = @COIN_DEBUG_TRUE@
+COIN_HAS_ASL_FALSE = @COIN_HAS_ASL_FALSE@
+COIN_HAS_ASL_TRUE = @COIN_HAS_ASL_TRUE@
 COIN_HAS_CBC_FALSE = @COIN_HAS_CBC_FALSE@
 COIN_HAS_CBC_TRUE = @COIN_HAS_CBC_TRUE@
 COIN_HAS_CGL_FALSE = @COIN_HAS_CGL_FALSE@
@@ -135,6 +139,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 F77 = @F77@
+FADDLIBS = @FADDLIBS@
 FFLAGS = @FFLAGS@
 FMPINCDIR = @FMPINCDIR@
 FMPLIB = @FMPLIB@
@@ -147,6 +152,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
+LIBEXT = @LIBEXT@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
@@ -416,13 +422,13 @@ uninstall-am: uninstall-info-am
 
 # We are using the Cbc solver executable to do the unit test
 
-test: ../src/cbc$(EXEEXT) ../src/solve$(EXEEXT) $(extra_target)
+test: ../src/cbc-generic$(EXEEXT) ../src/cbc$(EXEEXT)
 	cd ../../Data/Netlib; make uncompress
 	cd ../../Data/miplib3; make uncompress
-	../src/cbc$(EXEEXT) -miplib -unitTest
-	../src/solve$(EXEEXT) -unitTest -netlib
+	../src/cbc-generic$(EXEEXT) -miplib -unitTest
+	../src/cbc$(EXEEXT) -unitTest -netlib
 
-.PHONY: test example_files
+.PHONY: test
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

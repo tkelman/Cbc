@@ -316,12 +316,15 @@ double
 CbcParam::doubleParameter (OsiSolverInterface * model) const
 {
   double value;
+  bool getDblParamRetValue;
   switch(type_) {
   case DUALTOLERANCE:
-    assert(model->getDblParam(OsiDualTolerance,value));
+    getDblParamRetValue = model->getDblParam(OsiDualTolerance,value);
+    assert(getDblParamRetValue);
     break;
   case PRIMALTOLERANCE:
-    assert(model->getDblParam(OsiPrimalTolerance,value));
+    getDblParamRetValue = model->getDblParam(OsiPrimalTolerance,value);
+    assert(getDblParamRetValue);
     break;
   default:
     abort();
@@ -340,6 +343,7 @@ CbcParam::setIntParameter (OsiSolverInterface * model,int value) const
     int oldValue;
     switch(type_) {
     case LOGLEVEL:
+      oldValue=model->messageHandler()->logLevel();
       model->messageHandler()->setLogLevel(value);
       break;
     default:

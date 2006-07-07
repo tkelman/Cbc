@@ -9,7 +9,6 @@
 #include <string>
 #include <iostream>
 
-#include "CoinUtilsConfig.h"
 #include "CoinMpsIO.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "CoinPackedVector.hpp"
@@ -1768,7 +1767,7 @@ void CbcClpUnitTest (const CbcModel & saveModel)
     doTest=true;
     fclose(fp);
   }
-#ifdef COIN_HAS_ZLIB
+#ifdef COIN_USE_ZLIB
   test1 += ".gz";
   fp=fopen(test1.c_str(),"r");
   if (fp) {
