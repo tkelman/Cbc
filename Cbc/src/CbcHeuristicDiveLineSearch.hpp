@@ -1,33 +1,33 @@
 // Copyright (C) 2008, International Business Machines
 // Corporation and others.  All Rights Reserved.
-#ifndef CbcHeuristicDiveVectorLength_H
-#define CbcHeuristicDiveVectorLength_H
+#ifndef CbcHeuristicDiveLineSearch_H
+#define CbcHeuristicDiveLineSearch_H
 
 #include "CbcHeuristicDive.hpp"
 
-/** DiveVectorLength class
+/** DiveLineSearch class
  */
 
-class CbcHeuristicDiveVectorLength : public CbcHeuristicDive {
+class CbcHeuristicDiveLineSearch : public CbcHeuristicDive {
 public:
 
   // Default Constructor 
-  CbcHeuristicDiveVectorLength ();
+  CbcHeuristicDiveLineSearch ();
 
   // Constructor with model - assumed before cuts
-  CbcHeuristicDiveVectorLength (CbcModel & model);
+  CbcHeuristicDiveLineSearch (CbcModel & model);
   
   // Copy constructor 
-  CbcHeuristicDiveVectorLength ( const CbcHeuristicDiveVectorLength &);
+  CbcHeuristicDiveLineSearch ( const CbcHeuristicDiveLineSearch &);
    
   // Destructor 
-  ~CbcHeuristicDiveVectorLength ();
+  ~CbcHeuristicDiveLineSearch ();
 
   /// Clone
-  virtual CbcHeuristicDiveVectorLength * clone() const;
+  virtual CbcHeuristicDiveLineSearch * clone() const;
   
   /// Assignment operator 
-  CbcHeuristicDiveVectorLength & operator=(const CbcHeuristicDiveVectorLength& rhs);
+  CbcHeuristicDiveLineSearch & operator=(const CbcHeuristicDiveLineSearch& rhs);
 
   /// Create C++ lines to get to current state
   virtual void generateCpp( FILE * fp) ;

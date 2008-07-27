@@ -30,7 +30,9 @@ class CbcFeasibilityBase;
 class CbcStatistics;
 class CbcEventHandler ;
 class CglPreProcess;
-
+# ifdef COIN_HAS_CLP
+class ClpNodeStuff;
+#endif
 // #define CBC_CHECK_BASIS 1
 
 //#############################################################################
@@ -263,7 +265,7 @@ private:
   void resizeWhichGenerator(int numberNow, int numberAfter);
 public:
 #ifndef CBC_THREAD
-#define NEW_UPDATE_OBJECT 0
+#define NEW_UPDATE_OBJECT 2
 #else
 #define NEW_UPDATE_OBJECT 2
 #endif
@@ -682,6 +684,18 @@ public:
   /** Get the preferred way to branch (default 0) */
   inline int getPreferredWay() const
   { return preferredWay_;}
+  /// Get at which depths to do cuts
+  inline int whenCuts() const
+  { return whenCuts_;}
+  /// Set at which depths to do cuts
+  inline void setWhenCuts(int value)
+  { whenCuts_ = value;}
+  /** Return true if we want to do cuts
+      If allowForTopOfTree zero then just does on multiples of depth
+      if 1 then allows for doing at top of tree
+      if 2 then says if cuts allowed anywhere apart from root
+  */
+  bool doCutsNow(int allowForTopOfTree) const;
   /** Set size of mini - tree.  If > 1 then does total enumeration of
       tree given by this best variables to branch on
   */
@@ -733,6 +747,9 @@ public:
   { problemType_=number;}
   inline int problemType() const
   { return problemType_;}
+  /// Current depth
+  inline int currentDepth() const
+  { return currentDepth_;}
 
   /// Set how often to scan global cuts 
   void setHowOftenGlobalScan(int number);
@@ -781,9 +798,15 @@ public:
     /// Get how many iterations it took to solve the problem.
     inline int getIterationCount() const
     { return numberIterations_;}
+    /// Increment how many iterations it took to solve the problem.
+    inline void incrementIterationCount(int value)
+    { numberIterations_ += value;}
     /// Get how many Nodes it took to solve the problem.
     inline int getNodeCount() const
     { return numberNodes_;}
+    /// Increment how many nodes it took to solve the problem.
+    inline void incrementNodeCount(int value)
+    { numberNodes_ += value;}
     /** Final status of problem
         Some of these can be found out by is...... functions
         -1 before branchAndBound
@@ -1002,7 +1025,7 @@ public:
   /// Record a new incumbent solution and update objectiveValue
   void setBestSolution(CBC_Message how,
 		       double & objectiveValue, const double *solution,
-		       bool fixVariables=false);
+		       int fixVariables=0);
   /// Just update objectiveValue
   void setBestObjectiveValue( double objectiveValue);
 
@@ -1013,7 +1036,7 @@ public:
       Previously computed objective value is now passed in (in case user does not do solve)
  */
   double checkSolution(double cutoff, double * solution,
-		       bool fixVariables, double originalObjValue);
+		       int fixVariables, double originalObjValue);
   /** Test the current solution for feasiblility.
 
     Scan all objects for indications of infeasibility. This is broken down
@@ -1339,7 +1362,8 @@ public:
 
     The name is just used for print messages.
   */
-  void addHeuristic(CbcHeuristic * generator, const char *name = NULL);
+  void addHeuristic(CbcHeuristic * generator, const char *name = NULL,
+		    int before=-1);
   ///Get the specified heuristic
   inline CbcHeuristic * heuristic(int i) const
   { return heuristic_[i];}
@@ -1458,6 +1482,10 @@ public:
       4 bit (16) - non-linear model - so no well defined CoinPackedMatrix
       5 bit (32) - keep names
       6 bit (64) - try for dominated columns
+      7 bit (128) - SOS type 1 but all declared integer
+      8 bit (256) - Set to say solution just found, unset by doing cuts
+      9 bit (512) - Try reduced model after 100 nodes
+      10 bit (1024) - Switch on some heuristics even if seems unlikely
   */
   /// Set special options
   inline void setSpecialOptions(int value)
@@ -1525,7 +1553,7 @@ public:
   inline bool modelOwnsSolver () { return ((ownership_&0x80000000)!=0) ; } 
   
     /** Copy constructor .
-      If cloneHandler true - non-default handler cloned
+      If cloneHandler is true then message handler is cloned
     */  
     CbcModel(const CbcModel & rhs, bool cloneHandler=false);
   
@@ -1576,6 +1604,12 @@ public:
   /** Clears out enough to reset CbcModel cutoff etc
    */
   void resetModel();
+  /** Most of copy constructor
+      mode - 0 copy but don't delete before
+             1 copy and delete before
+	     2 copy and delete before (but use virgin generators)
+  */
+  void gutsOfCopy(const CbcModel & rhs,int mode=0);
   /// Move status, nodes etc etc across
   void moveInfo(const CbcModel & rhs);
   //@}
@@ -1622,9 +1656,12 @@ public:
     will not be required, set allowResolve to false to suppress
     reoptimisation.
     If saveCuts then slack cuts will be saved
+    On input current cuts are cuts and newCuts
+    on exit current cuts will be correct.  Returns number dropped
   */
-  void takeOffCuts(OsiCuts &cuts, 
-		     bool allowResolve,OsiCuts * saveCuts) ;
+  int takeOffCuts(OsiCuts &cuts, 
+		   bool allowResolve,OsiCuts * saveCuts,
+		   int numberNewCuts=0, const OsiRowCut ** newCuts=NULL) ;
 
   /** Determine and install the active cuts that need to be added for
     the current subproblem
@@ -1650,12 +1687,14 @@ public:
     installed, and an appropriate basis (minus the cuts, but big enough to
     accommodate them) is constructed.
 
+    Returns true if new problem similar to old
+
     \todo addCuts1() is called in contexts where it's known in advance that
 	  all that's desired is to determine a list of cuts and do the
 	  bookkeeping (adjust the reference counts). The work of installing
 	  bounds and building a basis goes to waste.
   */
-  void addCuts1(CbcNode * node, CoinWarmStartBasis *&lastws);
+  bool addCuts1(CbcNode * node, CoinWarmStartBasis *&lastws);
   /** Returns bounds just before where - initially original bounds.
       Also sets downstream nodes (lower if force 1, upper if 2)
   */
@@ -1671,6 +1710,8 @@ public:
       Scan and convert CbcSimpleInteger objects
   */
   void convertToDynamic();
+  /// Set numberBeforeTrust in all objects
+  void synchronizeNumberBeforeTrust(int type=0);
   /// Zap integer information in problem (may leave object info)
   void zapIntegerInformation(bool leaveObjects=true);
   /// Use cliques for pseudocost information - return nonzero if infeasible
@@ -1683,7 +1724,10 @@ public:
       correspond to integerVariable()[i]
       User must allocate arrays before call
   */
-  void fillPseudoCosts(double * downCosts, double * upCosts) const;
+  void fillPseudoCosts(double * downCosts, double * upCosts,
+		       int * numberDown=NULL, int * numberUp=NULL,
+		       int * numberDownInfeasible=NULL,
+		       int * numberUpInfeasible=NULL) const;
   /** Do heuristics at root.
       0 - don't delete
       1 - delete
@@ -1714,15 +1758,42 @@ public:
   /// Get a pointer to probing info
   inline CglTreeProbingInfo * probingInfo() const
   { return probingInfo_;}
+  /// Thread specific random number generator
+  inline CoinThreadRandom * randomNumberGenerator()
+  { return &randomNumberGenerator_;}
   /// Set the number of iterations done in strong branching.
   inline void setNumberStrongIterations(int number)
   { numberStrongIterations_ = number;}
   /// Get the number of iterations done in strong branching.
   inline int numberStrongIterations() const
   { return numberStrongIterations_;}
+  /// Get maximum number of iterations (designed to be used in heuristics)
+  inline int maximumNumberIterations() const
+  { return maximumNumberIterations_;}
+  /// Set maximum number of iterations (designed to be used in heuristics)
+  inline void setMaximumNumberIterations(int value)
+  { maximumNumberIterations_ = value;}
+# ifdef COIN_HAS_CLP
+  /// Set depth for fast nodes
+  inline void setFastNodeDepth(int value) 
+  { fastNodeDepth_ = value;}
+  /// Get depth for fast nodes
+  inline int fastNodeDepth() const
+  { return fastNodeDepth_;}
+  inline void incrementExtra(int nodes, int iterations)
+  { numberExtraNodes_ += nodes; numberExtraIterations_ += iterations;}
+#endif
   /// Increment strong info
   void incrementStrongInfo(int numberTimes, int numberIterations,
 			   int numberFixed, bool ifInfeasible);
+  /// Return strong info
+  inline const int * strongInfo() const
+  { return strongInfo_;}
+
+  /// Return mutable strong info
+  inline int * mutableStrongInfo()
+  { return strongInfo_;}
+
   /// Says whether all dynamic integers
   inline bool allDynamic () const { return ((ownership_&0x40000000)!=0) ; } 
   /// Create C++ lines to get to current state
@@ -1737,6 +1808,8 @@ public:
   */
   inline void setBestSolutionBasis(const CoinWarmStartBasis & bestSolutionBasis)
   { bestSolutionBasis_ = bestSolutionBasis;}
+  /// Redo walkback arrays
+  void redoWalkBack();
   //@}
 
 //---------------------------------------------------------------------------
@@ -1832,6 +1905,8 @@ private:
       3 - no solution but many nodes
   */
   int stateOfSearch_;
+  /// At which depths to do cuts
+  int whenCuts_;
   /// Hotstart solution
   double * hotstartSolution_;
   /// Hotstart priorities 
@@ -1889,6 +1964,15 @@ private:
     allocated size.
   */
   CbcNodeInfo ** walkback_;
+  //#define NODE_LAST
+#ifdef NODE_LAST
+  CbcNodeInfo ** lastNodeInfo_;
+  const OsiRowCut ** lastCut_;
+  int lastDepth_;
+  int lastNumberCuts2_;
+  int maximumCuts_;
+  int * lastNumberCuts_;
+#endif
 
   /** The list of cuts initially collected for this subproblem
 
@@ -2013,6 +2097,10 @@ private:
   CbcHeuristic ** heuristic_;
   /// Pointer to heuristic solver which found last solution (or NULL)
   CbcHeuristic * lastHeuristic_;
+# ifdef COIN_HAS_CLP
+  /// Depth for fast nodes
+  int fastNodeDepth_;
+#endif
   /*! Pointer to the event handler */
 # ifdef CBC_ONLY_CLP
   ClpEventHandler *eventHandler_ ;
@@ -2044,6 +2132,10 @@ private:
   /** Number of times global cuts violated.  When global cut pool then this
       should be kept for each cut and type of cut */
   int numberGlobalViolations_;
+  /// Number of extra iterations in fast lp
+  int numberExtraIterations_;
+  /// Number of extra nodes in fast lp
+  int numberExtraNodes_;
   /** Value of objective at continuous
       (Well actually after initial round of cuts)
   */
@@ -2065,6 +2157,10 @@ private:
   int maximumWhich_;
   /// Maximum number of rows
   int maximumRows_;
+  /// Current depth
+  int currentDepth_;
+  /// Thread specific random number generator
+  mutable CoinThreadRandom randomNumberGenerator_;
   /// Work basis for temporary use
   CoinWarmStartBasis workingBasis_;
   /// Which cut generator generated this cut
@@ -2099,8 +2195,9 @@ private:
   int searchStrategy_;
   /// Number of iterations in strong branching
   int numberStrongIterations_;
-  /** 0 - number times strong branching done, 1 - number fixed, 2 - number infeasible */
-  int strongInfo_[3];
+  /** 0 - number times strong branching done, 1 - number fixed, 2 - number infeasible 
+      Second group of three is a snapshot at node [6] */
+  int strongInfo_[7];
   /** 
       For advanced applications you may wish to modify the behavior of Cbc
       e.g. if the solver is a NLP solver then you may not have an exact
@@ -2110,6 +2207,8 @@ private:
   OsiBabSolver * solverCharacteristics_;
   /// Whether to force a resolve after takeOffCuts
   bool resolveAfterTakeOffCuts_;
+  /// Maximum number of iterations (designed to be used in heuristics)
+  int maximumNumberIterations_;
 #if NEW_UPDATE_OBJECT>1
   /// Number of outstanding update information items
   int numberUpdateItems_;

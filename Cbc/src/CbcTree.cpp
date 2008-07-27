@@ -6,19 +6,35 @@
 #include "CbcTree.hpp"
 #include "CbcCountRowCut.hpp"
 #include "CbcCompareActual.hpp"
+#include "CbcBranchActual.hpp"
 
 CbcTree::CbcTree()
 {
   maximumNodeNumber_=0;
+  numberBranching_=0;
+  maximumBranching_=0;
+  branched_=NULL;
+  newBound_=NULL;
 }
 CbcTree::~CbcTree()
 {
+  delete [] branched_;
+  delete [] newBound_;
 }
 // Copy constructor 
 CbcTree::CbcTree ( const CbcTree & rhs)
 {
   nodes_=rhs.nodes_;
   maximumNodeNumber_=rhs.maximumNodeNumber_;
+  numberBranching_=rhs.numberBranching_;
+  maximumBranching_=rhs.maximumBranching_;
+  if (maximumBranching_>0) {
+    branched_=CoinCopyOfArray(rhs.branched_,maximumBranching_);
+    newBound_=CoinCopyOfArray(rhs.newBound_,maximumBranching_);
+  } else {
+    branched_=NULL;
+    newBound_=NULL;
+  }
 }
 // Assignment operator 
 CbcTree &
@@ -27,8 +43,122 @@ CbcTree::operator=(const CbcTree & rhs)
   if (this != &rhs) {
     nodes_=rhs.nodes_;
     maximumNodeNumber_=rhs.maximumNodeNumber_;
+    delete [] branched_;
+    delete [] newBound_;
+    numberBranching_=rhs.numberBranching_;
+    maximumBranching_=rhs.maximumBranching_;
+    if (maximumBranching_>0) {
+      branched_=CoinCopyOfArray(rhs.branched_,maximumBranching_);
+      newBound_=CoinCopyOfArray(rhs.newBound_,maximumBranching_);
+    } else {
+      branched_=NULL;
+      newBound_=NULL;
+    }
   }
   return *this;
+}
+// Adds branching information to complete state
+void 
+CbcTree::addBranchingInformation(const CbcModel * model, const CbcNodeInfo * nodeInfo,
+				 const double * currentLower,
+				 const double * currentUpper)
+{
+  const OsiBranchingObject * objA  = nodeInfo->owner()->branchingObject();
+  const CbcIntegerBranchingObject * objBranch  = dynamic_cast<const CbcIntegerBranchingObject *> (objA);
+  if (objBranch) {
+    const CbcObject * objB = objBranch->object();
+    const CbcSimpleInteger * obj = dynamic_cast<const CbcSimpleInteger *> (objB);
+    assert (obj);
+    int iColumn = obj->columnNumber();
+    const double * down = objBranch->downBounds();
+    const double * up = objBranch->upBounds();
+    assert (currentLower[iColumn]==down[0]);
+    assert (currentUpper[iColumn]==up[1]);
+    if (dynamic_cast<const CbcPartialNodeInfo *> (nodeInfo)) {
+      const CbcPartialNodeInfo * info = dynamic_cast<const CbcPartialNodeInfo *> (nodeInfo);
+      const double * newBounds = info->newBounds();
+      const int * variables = info->variables();
+      int numberChanged = info->numberChangedBounds();
+      for (int i=0;i<numberChanged;i++) {
+	int jColumn = variables[i];
+	int kColumn = jColumn&(~0x80000000);
+	if (iColumn==kColumn) {
+	  jColumn |= 0x40000000;
+	  double value = newBounds[i];
+	  if ((jColumn&0x80000000)==0) {
+	    assert (value==up[0]);
+	  } else {
+	    assert (value==down[1]);
+	  }
+	}
+	if (numberBranching_==maximumBranching_)
+	  increaseSpace();
+	newBound_[numberBranching_]=(int) newBounds[i];
+	branched_[numberBranching_++]=jColumn;
+      }
+    } else {
+      const CbcFullNodeInfo * info = dynamic_cast<const CbcFullNodeInfo *> (nodeInfo);
+      int numberIntegers = model->numberIntegers();
+      const int * which = model->integerVariable();
+      const double * newLower = info->lower();
+      const double * newUpper = info->upper();
+      if (numberBranching_==maximumBranching_)
+	increaseSpace();
+      assert (newLower[iColumn]==up[0]||
+	      newUpper[iColumn]==down[1]);
+      int jColumn=iColumn|0x40000000;
+      if (newLower[iColumn]==up[0]) {
+	newBound_[numberBranching_]=(int) up[0];
+      } else {
+	newBound_[numberBranching_]=(int) down[1];
+	jColumn|= 0x80000000;
+      }
+      branched_[numberBranching_++]=jColumn;
+      for (int i=0;i<numberIntegers;i++) {
+	int jColumn=which[i];
+	assert (currentLower[jColumn]==newLower[jColumn]||
+		currentUpper[jColumn]==newUpper[jColumn]);
+	if (jColumn!=iColumn) {
+	  bool changed=false;
+	  double value;
+	  if (newLower[jColumn]>currentLower[jColumn]) {
+	    value=newLower[jColumn];
+	    changed=true;
+	  } else if (newUpper[jColumn]<currentUpper[jColumn]) {
+	    value=newUpper[jColumn];
+	    jColumn|= 0x80000000;
+	    changed=true;
+	  }
+	  if (changed) {
+	    if (numberBranching_==maximumBranching_)
+	      increaseSpace();
+	    newBound_[numberBranching_]=(int) value;
+	    branched_[numberBranching_++]=jColumn;
+	  }
+	}
+      }
+    }
+  } else {
+    // switch off
+    delete [] branched_;
+    delete [] newBound_;
+    maximumBranching_=-1;
+    branched_=NULL;
+    newBound_=NULL;
+  }
+}
+// Increase space for data
+void 
+CbcTree::increaseSpace()
+{
+  assert (numberBranching_==maximumBranching_);
+  maximumBranching_ = (3*maximumBranching_+10)>>1;
+  unsigned int * temp1 = CoinCopyOfArrayPartial(branched_,maximumBranching_,numberBranching_);
+  delete [] branched_;
+  branched_ = temp1;
+  int * temp2 = CoinCopyOfArrayPartial(newBound_,maximumBranching_,numberBranching_);
+  delete [] newBound_;
+  newBound_ = temp2;
 }
 // Clone
 CbcTree *
@@ -92,6 +222,10 @@ CbcTree::bestNode(double cutoff)
       assert(best->objectiveValue()!=COIN_DBL_MAX&&best->nodeInfo());
     if (best&&best->objectiveValue()!=COIN_DBL_MAX&&best->nodeInfo())
       assert (best->nodeInfo()->numberBranchesLeft());
+    if (best&&best->objectiveValue()>=cutoff) {
+      // double check in case node can change its mind!
+      best->checkIsCutoff(cutoff);
+    }
     if (!best||best->objectiveValue()>=cutoff) {
 #if 0
       // take off
@@ -190,7 +324,7 @@ CbcTree::bestNode(double cutoff)
 double
 CbcTree::getBestPossibleObjective(){
   double r_val = 1e100;
-  for(int i = 0 ; i < nodes_.size() ; i++){
+  for(int i = 0 ; i < (int) nodes_.size() ; i++){
     if(nodes_[i] && nodes_[i]->objectiveValue() < r_val){
       r_val = nodes_[i]->objectiveValue();
     }
@@ -222,13 +356,17 @@ CbcTree::cleanTree(CbcModel * model, double cutoff, double & bestPossibleObjecti
     CbcNode * node = top();
     pop();
     double value = node ? node->objectiveValue() : COIN_DBL_MAX;
-    bestPossibleObjective = CoinMin(bestPossibleObjective,value);
+    if (node&&value>=cutoff) {
+      // double check in case node can change its mind!
+      value=node->checkIsCutoff(cutoff);
+    }
     if (value >= cutoff||!node->active()) {
       if (node) {
         nodeArray[--kDelete] = node;
         depth[kDelete] = node->depth();
       }
     } else {
+      bestPossibleObjective = CoinMin(bestPossibleObjective,value);
       nodeArray[k++]=node;
     }
   }
@@ -379,6 +517,10 @@ CbcTree::bestNode(double cutoff)
       assert(best->objectiveValue()!=COIN_DBL_MAX&&best->nodeInfo());
     if (best&&best->objectiveValue()!=COIN_DBL_MAX&&best->nodeInfo())
       assert (best->nodeInfo()->numberBranchesLeft());
+    if (best&&best->objectiveValue()>=cutoff) {
+      // double check in case node can change its mind!
+      best->checkIsCutoff(cutoff);
+    }
     if (!best||best->objectiveValue()>=cutoff) {
 #if 0
       // take off
@@ -503,6 +645,10 @@ CbcTree::cleanTree(CbcModel * model, double cutoff, double & bestPossibleObjecti
     CbcNode * node = top();
     pop();
     double value = node ? node->objectiveValue() : COIN_DBL_MAX;
+    if (node&&value>=cutoff) {
+      // double check in case node can change its mind!
+      value=node->checkIsCutoff(cutoff);
+    }
     bestPossibleObjective = CoinMin(bestPossibleObjective,value);
     if (value >= cutoff) {
       if (node) {

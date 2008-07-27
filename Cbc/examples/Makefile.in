@@ -24,7 +24,8 @@ OBJS =  $(DRIVER).@OBJEXT@ \
 	CbcSolver3.@OBJEXT@ \
 	ClpQuadInterface.@OBJEXT@ \
 	CbcBranchFollow2.@OBJEXT@ \
-	CbcBranchUser.@OBJEXT@ 
+	CbcBranchUser.@OBJEXT@ \
+	CbcBranchLink.@OBJEXT@
 
 # CHANGEME: Additional libraries
 ADDLIBS =

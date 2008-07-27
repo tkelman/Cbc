@@ -5,54 +5,54 @@
 #  pragma warning(disable:4786)
 #endif
 
-#include "CbcHeuristicDiveFractional.hpp"
+#include "CbcHeuristicDiveLineSearch.hpp"
 #include "CbcStrategy.hpp"
 
 // Default Constructor
-CbcHeuristicDiveFractional::CbcHeuristicDiveFractional() 
+CbcHeuristicDiveLineSearch::CbcHeuristicDiveLineSearch() 
   :CbcHeuristicDive()
 {
 }
 
 // Constructor from model
-CbcHeuristicDiveFractional::CbcHeuristicDiveFractional(CbcModel & model)
+CbcHeuristicDiveLineSearch::CbcHeuristicDiveLineSearch(CbcModel & model)
   :CbcHeuristicDive(model)
 {
 }
 
 // Destructor 
-CbcHeuristicDiveFractional::~CbcHeuristicDiveFractional ()
+CbcHeuristicDiveLineSearch::~CbcHeuristicDiveLineSearch ()
 {
 }
 
 // Clone
-CbcHeuristicDiveFractional *
-CbcHeuristicDiveFractional::clone() const
+CbcHeuristicDiveLineSearch *
+CbcHeuristicDiveLineSearch::clone() const
 {
-  return new CbcHeuristicDiveFractional(*this);
+  return new CbcHeuristicDiveLineSearch(*this);
 }
 
 // Create C++ lines to get to current state
 void 
-CbcHeuristicDiveFractional::generateCpp( FILE * fp) 
+CbcHeuristicDiveLineSearch::generateCpp( FILE * fp) 
 {
-  CbcHeuristicDiveFractional other;
-  fprintf(fp,"0#include \"CbcHeuristicDiveFractional.hpp\"\n");
-  fprintf(fp,"3  CbcHeuristicDiveFractional heuristicDiveFractional(*cbcModel);\n");
-  CbcHeuristic::generateCpp(fp,"heuristicDiveFractional");
-  fprintf(fp,"3  cbcModel->addHeuristic(&heuristicDiveFractional);\n");
+  CbcHeuristicDiveLineSearch other;
+  fprintf(fp,"0#include \"CbcHeuristicDiveLineSearch.hpp\"\n");
+  fprintf(fp,"3  CbcHeuristicDiveLineSearch heuristicDiveLineSearch(*cbcModel);\n");
+  CbcHeuristic::generateCpp(fp,"heuristicDiveLineSearch");
+  fprintf(fp,"3  cbcModel->addHeuristic(&heuristicDiveLineSearch);\n");
 }
 
 // Copy constructor 
-CbcHeuristicDiveFractional::CbcHeuristicDiveFractional(const CbcHeuristicDiveFractional & rhs)
+CbcHeuristicDiveLineSearch::CbcHeuristicDiveLineSearch(const CbcHeuristicDiveLineSearch & rhs)
 :
   CbcHeuristicDive(rhs)
 {
 }
 
 // Assignment operator 
-CbcHeuristicDiveFractional & 
-CbcHeuristicDiveFractional::operator=( const CbcHeuristicDiveFractional& rhs)
+CbcHeuristicDiveLineSearch & 
+CbcHeuristicDiveLineSearch::operator=( const CbcHeuristicDiveLineSearch& rhs)
 {
   if (this!=&rhs) {
     CbcHeuristicDive::operator=(rhs);
@@ -61,7 +61,7 @@ CbcHeuristicDiveFractional::operator=( const CbcHeuristicDiveFractional& rhs)
 }
 
 bool
-CbcHeuristicDiveFractional::selectVariableToBranch(OsiSolverInterface* solver,
+CbcHeuristicDiveLineSearch::selectVariableToBranch(OsiSolverInterface* solver,
 						   const double* newSolution,
 						   int& bestColumn,
 						   int& bestRound)
@@ -70,12 +70,16 @@ CbcHeuristicDiveFractional::selectVariableToBranch(OsiSolverInterface* solver,
   const int * integerVariable = model_->integerVariable();
   double integerTolerance = model_->getDblParam(CbcModel::CbcIntegerTolerance);
 
+  // get the LP relaxation solution at the root node
+  double * rootNodeLPSol = model_->continuousSolution();
+
   bestColumn = -1;
   bestRound = -1; // -1 rounds down, +1 rounds up
-  double bestFraction = DBL_MAX;
+  double bestRelDistance = DBL_MAX;
   bool allTriviallyRoundableSoFar = true;
   for (int i=0; i<numberIntegers; i++) {
     int iColumn = integerVariable[i];
+    double rootValue=rootNodeLPSol[iColumn];
     double value=newSolution[iColumn];
     double fraction=value-floor(value);
     int round = 0;
@@ -84,24 +88,30 @@ CbcHeuristicDiveFractional::selectVariableToBranch(OsiSolverInterface* solver,
 
 	if (allTriviallyRoundableSoFar&&downLocks_[i]>0&&upLocks_[i]>0) {
 	  allTriviallyRoundableSoFar = false;
-	  bestFraction = DBL_MAX;
+	  bestRelDistance = DBL_MAX;
 	}
 
-	// the variable cannot be rounded
-	if(fraction < 0.5)
+	double relDistance;
+	if(value < rootValue) {
 	  round = -1;
-	else {
-	  round = 1;
-	  fraction = 1.0 - fraction;
+	  relDistance = fraction / (rootValue - value);
 	}
-	
+	else if(value > rootValue) {
+	  round = 1;
+	  relDistance = (1.0 - fraction) / (value - rootValue);
+	}
+	else {
+	  round = -1;
+	  relDistance = DBL_MAX;
+	}
+	  
 	// if variable is not binary, penalize it
 	if(!solver->isBinary(iColumn))
-	  fraction *= 1000.0;
+	  relDistance *= 1000.0;
 	
-	if(fraction < bestFraction) {
+	if(relDistance < bestRelDistance) {
 	  bestColumn = iColumn;
-	  bestFraction = fraction;
+	  bestRelDistance = relDistance;
 	  bestRound = round;
 	}
       }

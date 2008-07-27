@@ -151,6 +151,12 @@ public:
   /// Gets fraction of new(rows+columns)/old(rows+columns) before doing small branch and bound (default 1.0)
   inline double fractionSmall() const
   { return fractionSmall_;}
+  /// Get how many solutions the heuristic thought it got
+  inline int numberSolutionsFound() const
+  { return numberSolutionsFound_;}
+  /// Increment how many solutions the heuristic thought it got
+  inline void incrementNumberSolutionsFound()
+  { numberSolutionsFound_++;}
 
   /** Do mini branch and bound - return 
       0 not finished - no solution
@@ -177,12 +183,22 @@ public:
   { heuristicName_ = name;}
   /// Set random number generator seed
   void setSeed(int value);
+  /// Set input solution
+  void setInputSolution(const double * solution, double objValue);
 
-  /** Check whether the heuristic should run */
-  bool shouldHeurRun();
+  /** Check whether the heuristic should run at all */
+  virtual bool shouldHeurRun();
+  /** Check whether the heuristic should run this time */
   bool shouldHeurRun_randomChoice();
   void debugNodes();
   void printDistanceToNodes();
+  /// how many times the heuristic has actually run
+  inline int numRuns() const
+  { return numRuns_;}
+
+  /// How many times the heuristic could run
+  inline int numCouldRun() const
+  { return numCouldRun_;}
 
 protected:
 
@@ -195,7 +211,7 @@ protected:
   /// Feasibility pump options (-1 is off)
   int feasibilityPumpOptions_;
   /// Fraction of new(rows+columns)/old(rows+columns) before doing small branch and bound
-  double fractionSmall_;
+  mutable double fractionSmall_;
   /// Thread specific random number generator
   CoinThreadRandom randomNumberGenerator_;
   /// Name for printing
@@ -234,6 +250,12 @@ protected:
 
   /// How many times the heuristic could run
   int numCouldRun_;
+
+  /// How many solutions the heuristic thought it got
+  int numberSolutionsFound_;
+
+  // Input solution - so can be used as seed
+  double * inputSolution_;
 
 
 #if 0
@@ -375,6 +397,9 @@ public:
   void setFixPriority(int value)
   { fixPriority_ = value;}
 
+  /** Check whether the heuristic should run at all */
+  virtual bool shouldHeurRun();
+
 protected:
   // Data
 
@@ -430,6 +455,78 @@ public:
   virtual void resetModel(CbcModel * model);
 
 protected:
+};
+
+/** Just One class - this chooses one at random
+ */
+
+class CbcHeuristicJustOne : public CbcHeuristic {
+public:
+
+  // Default Constructor 
+  CbcHeuristicJustOne ();
+
+  // Constructor with model - assumed before cuts
+  CbcHeuristicJustOne (CbcModel & model);
+  
+  // Copy constructor 
+  CbcHeuristicJustOne ( const CbcHeuristicJustOne &);
+   
+  // Destructor 
+  ~CbcHeuristicJustOne ();
+
+  /// Clone
+  virtual CbcHeuristicJustOne * clone() const;
+  
+  /// Assignment operator 
+  CbcHeuristicJustOne & operator=(const CbcHeuristicJustOne& rhs);
+
+  /// Create C++ lines to get to current state
+  virtual void generateCpp( FILE * fp) ;
+
+  /** returns 0 if no solution, 1 if valid solution
+      with better objective value than one passed in
+      Sets solution values if good, sets objective value (only if good)
+      This is called after cuts have been added - so can not add cuts
+      This does Fractional Diving
+  */
+  virtual int solution(double & objectiveValue,
+		       double * newSolution);
+  /// Resets stuff if model changes
+  virtual void resetModel(CbcModel * model);
+
+  /// update model (This is needed if cliques update matrix etc)
+  virtual void setModel(CbcModel * model);
+  /// Selects the next variable to branch on
+  /** Returns true if all the fractional variables can be trivially
+      rounded. Returns false, if there is at least one fractional variable
+      that is not trivially roundable. In this case, the bestColumn
+      returned will not be trivially roundable.
+      This is dummy as never called
+  */
+  virtual bool selectVariableToBranch(OsiSolverInterface* solver,
+				      const double* newSolution,
+				      int& bestColumn,
+				      int& bestRound) 
+  { return true;}
+  /// Validate model i.e. sets when_ to 0 if necessary (may be NULL)
+  virtual void validate();
+  /// Adds an heuristic with probability
+  void addHeuristic(const CbcHeuristic * heuristic, double probability);
+  /// Normalize probabilities
+  void normalizeProbabilities();
+protected:
+  // Data
+
+  // Probability of running a heuristic
+  double * probabilities_;
+
+  // Heuristics
+  CbcHeuristic ** heuristic_;
+
+  // Number of heuristics
+  int numberHeuristics_;
+
 };
 
 #endif

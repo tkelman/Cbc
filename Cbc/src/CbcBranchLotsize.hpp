@@ -92,12 +92,9 @@ public:
   virtual void floorCeiling(double & floorLotsize, double & ceilingLotsize, double value,
 			    double tolerance) const;
   
-  /// Get model column number
+  /// Model column number
   inline int modelSequence() const
   {return columnNumber_;}
-  /// Set model column number
-  inline void setModelSequence(int value)
-  {columnNumber_ = value;}
 
   /** Column number if single column object -1 otherwise,
       so returns >= 0

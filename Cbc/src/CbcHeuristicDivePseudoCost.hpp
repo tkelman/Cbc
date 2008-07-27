@@ -1,33 +1,33 @@
 // Copyright (C) 2008, International Business Machines
 // Corporation and others.  All Rights Reserved.
-#ifndef CbcHeuristicDiveVectorLength_H
-#define CbcHeuristicDiveVectorLength_H
+#ifndef CbcHeuristicDivePseudoCost_H
+#define CbcHeuristicDivePseudoCost_H
 
 #include "CbcHeuristicDive.hpp"
 
-/** DiveVectorLength class
+/** DivePseudoCost class
  */
 
-class CbcHeuristicDiveVectorLength : public CbcHeuristicDive {
+class CbcHeuristicDivePseudoCost : public CbcHeuristicDive {
 public:
 
   // Default Constructor 
-  CbcHeuristicDiveVectorLength ();
+  CbcHeuristicDivePseudoCost ();
 
   // Constructor with model - assumed before cuts
-  CbcHeuristicDiveVectorLength (CbcModel & model);
+  CbcHeuristicDivePseudoCost (CbcModel & model);
   
   // Copy constructor 
-  CbcHeuristicDiveVectorLength ( const CbcHeuristicDiveVectorLength &);
+  CbcHeuristicDivePseudoCost ( const CbcHeuristicDivePseudoCost &);
    
   // Destructor 
-  ~CbcHeuristicDiveVectorLength ();
+  ~CbcHeuristicDivePseudoCost ();
 
   /// Clone
-  virtual CbcHeuristicDiveVectorLength * clone() const;
+  virtual CbcHeuristicDivePseudoCost * clone() const;
   
   /// Assignment operator 
-  CbcHeuristicDiveVectorLength & operator=(const CbcHeuristicDiveVectorLength& rhs);
+  CbcHeuristicDivePseudoCost & operator=(const CbcHeuristicDivePseudoCost& rhs);
 
   /// Create C++ lines to get to current state
   virtual void generateCpp( FILE * fp) ;
