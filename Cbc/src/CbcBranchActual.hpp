@@ -34,7 +34,7 @@ public:
   CbcClique & operator=( const CbcClique& rhs);
 
   // Destructor 
-  ~CbcClique ();
+  virtual ~CbcClique ();
   
   using CbcObject::infeasibility ;
   /// Infeasibility - large is 0.5
@@ -123,7 +123,7 @@ public:
   CbcSOS & operator=( const CbcSOS& rhs);
 
   // Destructor 
-  ~CbcSOS ();
+  virtual ~CbcSOS ();
   
   using CbcObject::infeasibility ;
   /// Infeasibility - large is 0.5
@@ -255,7 +255,7 @@ public:
   CbcSimpleInteger & operator=( const CbcSimpleInteger& rhs);
 
   // Destructor 
-  ~CbcSimpleInteger ();
+  virtual ~CbcSimpleInteger ();
   /// Construct an OsiSimpleInteger object
   OsiSimpleInteger * osiObject() const;
   using CbcObject::infeasibility ;
@@ -380,7 +380,7 @@ public:
   CbcNWay & operator=( const CbcNWay& rhs);
 
   /// Destructor 
-  ~CbcNWay ();
+  virtual ~CbcNWay ();
 
   /// Set up a consequence for a single member
   void setConsequence(int iColumn, const CbcConsequence & consequence);
@@ -590,7 +590,7 @@ public:
   CbcSimpleIntegerPseudoCost & operator=( const CbcSimpleIntegerPseudoCost& rhs);
 
   // Destructor 
-  ~CbcSimpleIntegerPseudoCost ();
+  virtual ~CbcSimpleIntegerPseudoCost ();
   
   using CbcObject::infeasibility ;
   /// Infeasibility - large is 0.5
@@ -647,9 +647,9 @@ protected:
   double upDownSeparator_;
   /** Method - 
       0 - normal - return min (up,down)
-      1 - if before any solution return max(up,down)
-      2 - if before branched solution return max(up,down)
-      3 - always return max(up,down)
+      1 - if before any solution return CoinMax(up,down)
+      2 - if before branched solution return CoinMax(up,down)
+      3 - always return CoinMax(up,down)
   */
   int method_;
 };
@@ -1512,6 +1512,9 @@ public:
   using CbcObject::createBranch ;
   /// Creates a branching object
   virtual CbcBranchingObject * createBranch(int way) ;
+  /// Return maximum number of nodes
+  inline int maximumNodes() const
+  { return maximumNodes_;}
   /// Get maximum depth
   inline int maximumDepth() const
   {return maximumDepth_;}
@@ -1532,6 +1535,8 @@ protected:
   /// data
   /// Maximum depth
   int maximumDepth_;
+  /// Maximum nodes
+  int maximumNodes_;
   /// Which node has solution (or -1)
   mutable int whichSolution_;
   /// Number of valid nodes (including whichSolution_)
@@ -1555,7 +1560,8 @@ public:
   CbcSubProblem (const OsiSolverInterface * solver,
 		 const double * lowerBefore,
 		 const double * upperBefore,
-		 const unsigned char * status);
+		 const unsigned char * status,
+		 int depth);
 
   /// Copy constructor 
   CbcSubProblem ( const CbcSubProblem &);
@@ -1566,8 +1572,8 @@ public:
   /// Destructor 
   virtual ~CbcSubProblem ();
 
-  /// Apply subproblem
-  void apply(OsiSolverInterface * model);
+  /// Apply subproblem (1=bounds, 2=basis, 3=both)
+  void apply(OsiSolverInterface * model, int what=3) const;
 
 public:
   /// Value of objective
@@ -1579,8 +1585,10 @@ public:
   int * variables_;
   /// New bound
   double * newBounds_;
-  /// Status as diff
-  CoinWarmStartDiff * statusDifference_;
+  /// Status 
+  mutable CoinWarmStartBasis * status_;
+  /// Depth
+  int depth_;
   /// Number of Extra bound changes
   int numberChangedBounds_;
   /// Number of infeasibilities
@@ -1652,6 +1660,21 @@ public:
    */
   virtual CbcRangeCompare compareBranchingObject
   (const CbcBranchingObject* brObj, const bool replaceIfOverlap = false);
+  /// Number of subproblems
+  inline int numberSubProblems() const
+  { return numberSubProblems_;}
+  /// Decrement number left and return number
+  inline int decrementNumberLeft()
+  { numberSubLeft_--; return numberSubLeft_;}
+  /// Which node we want to use
+  inline int whichNode() const
+  { return whichNode_;}
+  /// Set which node we want to use
+  inline void setWhichNode(int value)
+  { whichNode_ = value;}
+  // Sub problem
+  const CbcSubProblem * subProblem(int which) const
+  { return subProblems_+which;}
 
 public:
   /// data
@@ -1661,8 +1684,81 @@ public:
   CbcNode * node_;
   /// Number of subproblems
   int numberSubProblems_;
+  /// Number of subproblems left
+  int numberSubLeft_;
+  /// Which node we want to use (-1 for default)
+  int whichNode_;
   /// Number of rows
   int numberRows_;
+};
+
+/** Branching object for general objects - just one
+
+ */
+class CbcOneGeneralBranchingObject : public CbcBranchingObject {
+
+public:
+
+  // Default Constructor 
+  CbcOneGeneralBranchingObject ();
+
+  // Useful constructor
+  CbcOneGeneralBranchingObject (CbcModel * model,
+				 CbcGeneralBranchingObject * object,
+				 int whichOne);
+  
+  // Copy constructor 
+  CbcOneGeneralBranchingObject ( const CbcOneGeneralBranchingObject &);
+   
+  // Assignment operator 
+  CbcOneGeneralBranchingObject & operator=( const CbcOneGeneralBranchingObject& rhs);
+
+  /// Clone
+  virtual CbcBranchingObject * clone() const;
+
+  // Destructor 
+  virtual ~CbcOneGeneralBranchingObject ();
+  
+  using CbcBranchingObject::branch ;
+  /// Does next branch and updates state
+  virtual double branch();
+  /** Double checks in case node can change its mind!
+      Can change objective etc */
+  virtual void checkIsCutoff(double cutoff);
+
+  using CbcBranchingObject::print ;
+  /** \brief Print something about branch - only if log level high
+  */
+  virtual void print();
+  /** Return the type (an integer identifier) of \c this */
+  virtual int type() const { return 110; }
+
+  /** Compare the original object of \c this with the original object of \c
+      brObj. Assumes that there is an ordering of the original objects.
+      This method should be invoked only if \c this and brObj are of the same
+      type. 
+      Return negative/0/positive depending on whether \c this is
+      smaller/same/larger than the argument.
+  */
+  virtual int compareOriginalObject(const CbcBranchingObject* brObj) const;
+
+  /** Compare the \c this with \c brObj. \c this and \c brObj must be os the
+      same type and must have the same original object, but they may have
+      different feasible regions.
+      Return the appropriate CbcRangeCompare value (first argument being the
+      sub/superset if that's the case). In case of overlap (and if \c
+      replaceIfOverlap is true) replace the current branching object with one
+      whose feasible region is the overlap.
+   */
+  virtual CbcRangeCompare compareBranchingObject
+  (const CbcBranchingObject* brObj, const bool replaceIfOverlap = false);
+
+public:
+  /// data
+  /// Object
+  CbcGeneralBranchingObject * object_;
+  /// Which one
+  int whichOne_;
 };
 #endif
 #endif

@@ -8,6 +8,8 @@
 #include "CoinTime.hpp"
 #include "CbcModel.hpp"
 #include "CbcCutGenerator.hpp"
+#include "CbcBranchCut.hpp"
+#include "CglProbing.hpp"
 #include "OsiClpSolverInterface.hpp"
 #include "ClpFactorization.hpp"
 #include "OsiRowCutDebugger.hpp"
@@ -129,6 +131,9 @@ int CbcClpUnitTest (const CbcModel & saveModel, std::string& dirMiplib,
     //PUSH_MPS("blend2",274,353,7.598985,6.9156751140,7);
     //PUSH_MPS("p2756",755,2756,3124,2688.75,7);
     //PUSH_MPS("seymour_1",4944,1372,410.7637014,404.35152,7);
+    //PUSH_MPS("enigma",21,100,0.0,0.0,7);
+    //PUSH_MPS("misc03",96,160,3360,1910.,7);
+    //PUSH_MPS("p0201",133,201,7615,6875.0,7);
 #define HOWMANY 2
 #if HOWMANY
 #if HOWMANY>1
@@ -277,93 +282,106 @@ int CbcClpUnitTest (const CbcModel & saveModel, std::string& dirMiplib,
     }
     OsiClpSolverInterface * si =
       dynamic_cast<OsiClpSolverInterface *>(model->solver()) ;
-    assert (si != NULL);
-    // get clp itself
-    ClpSimplex * modelC = si->getModelPtr();
-    modelC->tightenPrimalBounds(0.0,0,true);
-    model->initialSolve();
-    if (modelC->dualBound()==1.0e10) {
-      // user did not set - so modify
-      // get largest scaled away from bound
-      ClpSimplex temp=*modelC;
-      temp.dual(0,7);
-      double largestScaled=1.0e-12;
-      double largest=1.0e-12;
-      int numberRows = temp.numberRows();
-      const double * rowPrimal = temp.primalRowSolution();
-      const double * rowLower = temp.rowLower();
-      const double * rowUpper = temp.rowUpper();
-      const double * rowScale = temp.rowScale();
-      int iRow;
-      for (iRow=0;iRow<numberRows;iRow++) {
-	double value = rowPrimal[iRow];
-	double above = value-rowLower[iRow];
-	double below = rowUpper[iRow]-value;
-	if (above<1.0e12) {
-	  largest = CoinMax(largest,above);
-	}
-	if (below<1.0e12) {
-	  largest = CoinMax(largest,below);
-	}
-	if (rowScale) {
-	  double multiplier = rowScale[iRow];
-	  above *= multiplier;
-	  below *= multiplier;
-	}
-	if (above<1.0e12) {
-	  largestScaled = CoinMax(largestScaled,above);
-	}
-	if (below<1.0e12) {
-	  largestScaled = CoinMax(largestScaled,below);
+    ClpSimplex * modelC = NULL;
+    if (si) {
+      // get clp itself
+      modelC = si->getModelPtr();
+      if (stuff&&stuff[9]) {
+	// vector matrix!
+	ClpMatrixBase * matrix = modelC->clpMatrix();
+	if (dynamic_cast< ClpPackedMatrix*>(matrix)) {
+	  ClpPackedMatrix * clpMatrix = dynamic_cast< ClpPackedMatrix*>(matrix);
+	  clpMatrix->makeSpecialColumnCopy();
 	}
       }
-      
-      int numberColumns = temp.numberColumns();
-      const double * columnPrimal = temp.primalColumnSolution();
-      const double * columnLower = temp.columnLower();
-      const double * columnUpper = temp.columnUpper();
-      const double * columnScale = temp.columnScale();
-      int iColumn;
-      for (iColumn=0;iColumn<numberColumns;iColumn++) {
-	double value = columnPrimal[iColumn];
-	double above = value-columnLower[iColumn];
-	double below = columnUpper[iColumn]-value;
-	if (above<1.0e12) {
-	  largest = CoinMax(largest,above);
+      model->checkModel();
+      modelC->tightenPrimalBounds(0.0,0,true);
+      model->initialSolve();
+      if (modelC->dualBound()==1.0e10) {
+	// user did not set - so modify
+	// get largest scaled away from bound
+	ClpSimplex temp=*modelC;
+	temp.dual(0,7);
+	double largestScaled=1.0e-12;
+	double largest=1.0e-12;
+	int numberRows = temp.numberRows();
+	const double * rowPrimal = temp.primalRowSolution();
+	const double * rowLower = temp.rowLower();
+	const double * rowUpper = temp.rowUpper();
+	const double * rowScale = temp.rowScale();
+	int iRow;
+	for (iRow=0;iRow<numberRows;iRow++) {
+	  double value = rowPrimal[iRow];
+	  double above = value-rowLower[iRow];
+	  double below = rowUpper[iRow]-value;
+	  if (above<1.0e12) {
+	    largest = CoinMax(largest,above);
+	  }
+	  if (below<1.0e12) {
+	    largest = CoinMax(largest,below);
+	  }
+	  if (rowScale) {
+	    double multiplier = rowScale[iRow];
+	    above *= multiplier;
+	    below *= multiplier;
+	  }
+	  if (above<1.0e12) {
+	    largestScaled = CoinMax(largestScaled,above);
+	  }
+	  if (below<1.0e12) {
+	    largestScaled = CoinMax(largestScaled,below);
+	  }
 	}
-	if (below<1.0e12) {
-	  largest = CoinMax(largest,below);
+	
+	int numberColumns = temp.numberColumns();
+	const double * columnPrimal = temp.primalColumnSolution();
+	const double * columnLower = temp.columnLower();
+	const double * columnUpper = temp.columnUpper();
+	const double * columnScale = temp.columnScale();
+	int iColumn;
+	for (iColumn=0;iColumn<numberColumns;iColumn++) {
+	  double value = columnPrimal[iColumn];
+	  double above = value-columnLower[iColumn];
+	  double below = columnUpper[iColumn]-value;
+	  if (above<1.0e12) {
+	    largest = CoinMax(largest,above);
+	  }
+	  if (below<1.0e12) {
+	    largest = CoinMax(largest,below);
+	  }
+	  if (columnScale) {
+	    double multiplier = 1.0/columnScale[iColumn];
+	    above *= multiplier;
+	    below *= multiplier;
+	  }
+	  if (above<1.0e12) {
+	    largestScaled = CoinMax(largestScaled,above);
+	  }
+	  if (below<1.0e12) {
+	    largestScaled = CoinMax(largestScaled,below);
+	  }
 	}
-	if (columnScale) {
-	  double multiplier = 1.0/columnScale[iColumn];
-	  above *= multiplier;
-	  below *= multiplier;
-	}
-	if (above<1.0e12) {
-	  largestScaled = CoinMax(largestScaled,above);
-	}
-	if (below<1.0e12) {
-	  largestScaled = CoinMax(largestScaled,below);
-	}
-      }
-      std::cout<<"Largest (scaled) away from bound "<<largestScaled
-	       <<" unscaled "<<largest<<std::endl;
+	std::cout<<"Largest (scaled) away from bound "<<largestScaled
+		 <<" unscaled "<<largest<<std::endl;
 #if 1
-      modelC->setDualBound(CoinMax(1.0001e8,
-				   CoinMin(1000.0*largestScaled,1.00001e10)));
+	modelC->setDualBound(CoinMax(1.0001e8,
+				     CoinMin(1000.0*largestScaled,1.00001e10)));
 #else
-      modelC->setDualBound(CoinMax(1.0001e9,
-				   CoinMin(1000.0*largestScaled,1.e10)));
+	modelC->setDualBound(CoinMax(1.0001e9,
+				     CoinMin(1000.0*largestScaled,1.e10)));
 #endif
+      }
     }
-    model->setMinimumDrop(min(5.0e-2,
+    model->setMinimumDrop(CoinMin(5.0e-2,
 			      fabs(model->getMinimizationObjValue())*1.0e-3+1.0e-4));
-    if (model->getNumCols()<500) {
-      model->setMaximumCutPassesAtRoot(-100); // always do 100 if possible
-    } else if (model->getNumCols()<5000) {
-      model->setMaximumCutPassesAtRoot(100); // use minimum drop
-    } else {
-      model->setMaximumCutPassesAtRoot(20);
+    if (CoinAbs(model->getMaximumCutPassesAtRoot())<=100) {
+      if (model->getNumCols()<500) {
+	model->setMaximumCutPassesAtRoot(-100); // always do 100 if possible
+      } else if (model->getNumCols()<5000) {
+	model->setMaximumCutPassesAtRoot(100); // use minimum drop
+      } else {
+	model->setMaximumCutPassesAtRoot(20);
+      }
     }
     // If defaults then increase trust for small models
     if (model->numberStrong()==5&&model->numberBeforeTrust()==10) {
@@ -386,9 +404,64 @@ int CbcClpUnitTest (const CbcModel & saveModel, std::string& dirMiplib,
       model->solver()->getStrParam(OsiProbName,problemName) ;
       model->solver()->activateRowCutDebugger(problemName.c_str()) ;
     }
+    if (model->getNumCols()==-201) {
+      // p201
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
+    if (model->getNumCols()==-104) {
+      // bell5
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
+    if (model->getNumCols()==-548&&model->getNumRows()==176) {
+      // p0548
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
+    if (model->getNumCols()==-160) {
+      // misc03
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
+    if (model->getNumCols()==-353) {
+      // blend2
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
+    if (model->getNumCols()==-100&&model->getNumRows()==21) {
+      // enigma
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
+    if (model->getNumCols()==-1541) {
+      // qnet1
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
+    if (model->getNumCols()==-10724) {
+      // mitre
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
     if (model->getNumCols()==-1224) {
       //PUSH_MPS("gesa2",1392,1224,25779856.372,25476489.678,7);
       // gesa2
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
+    if (model->getNumCols()==-282) {
+      //PUSH_MPS("p0282",241,282,258411,176867.50,7);
+      // p0282
       std::string problemName ;
       model->solver()->getStrParam(OsiProbName,problemName) ;
       model->solver()->activateRowCutDebugger(problemName.c_str()) ;
@@ -411,6 +484,12 @@ int CbcClpUnitTest (const CbcModel & saveModel, std::string& dirMiplib,
       model->solver()->getStrParam(OsiProbName,problemName) ;
       model->solver()->activateRowCutDebugger(problemName.c_str()) ;
     }
+    if (model->getNumCols()==-240&&model->getNumRows()==136) {
+      // pp08a
+      std::string problemName ;
+      model->solver()->getStrParam(OsiProbName,problemName) ;
+      model->solver()->activateRowCutDebugger(problemName.c_str()) ;
+    }
     if (model->getNumCols()==-1372&&model->getNumRows()==4944) {
       // seymour1
       std::string problemName ;
@@ -418,23 +497,34 @@ int CbcClpUnitTest (const CbcModel & saveModel, std::string& dirMiplib,
       model->solver()->activateRowCutDebugger(problemName.c_str()) ;
     }
     setCutAndHeuristicOptions(*model);
-    if (stuff&&stuff[8]>=1) {
-      if (modelC->numberColumns()+modelC->numberRows()<=500) 
-	model->setFastNodeDepth(-9);
-#ifdef CLP_MULTIPLE_FACTORIZATIONS    
-      modelC->factorization()->setGoDenseThreshold(40);
-      if (modelC->numberRows()<=40) 
-	modelC->factorization()->goDense();
+    if (si) {
+#ifdef CLP_MULTIPLE_FACTORIZATIONS   
+      int denseCode = stuff ? static_cast<int> (stuff[4]) : -1;
+      int smallCode = stuff ? static_cast<int> (stuff[10]) : -1;
+      if (stuff&&stuff[8]>=1) {
+	if (denseCode<0)
+	  denseCode=40;
+	if (smallCode<0)
+	  smallCode=40;
+      }
+      if (denseCode>0)
+	modelC->factorization()->setGoDenseThreshold(denseCode);
+      if (smallCode>0)
+	modelC->factorization()->setGoSmallThreshold(smallCode);
+      if (denseCode>=modelC->numberRows()) {
+	//printf("problem going dense\n");
+	//modelC->factorization()->goDenseOrSmall(modelC->numberRows());
+      }
 #endif
+      if (stuff&&stuff[8]>=1) {
+	if (modelC->numberColumns()+modelC->numberRows()<=500&&
+	    model->fastNodeDepth()==-1) 
+	  model->setFastNodeDepth(-12);
+      }
     }
-#ifdef CLP_MULTIPLE_FACTORIZATIONS    
-    if (stuff&&stuff[4]>0) 
-      modelC->factorization()->setGoDenseThreshold((int) stuff[4]);
-#endif
-    if (stuff&&stuff[4]>=modelC->numberRows()) {
-      printf("problem going dense\n");
-      modelC->factorization()->goDense();
-    }
+    //OsiObject * obj = new CbcBranchToFixLots(model,0.3,0.0,3,3000003);
+    //model->addObjects(1,&obj);
+    //delete obj;
     model->branchAndBound();
 #ifdef CLP_FACTORIZATION_INSTRUMENT
     double facTime=factorization_instrument(0);
@@ -450,6 +540,11 @@ int CbcClpUnitTest (const CbcModel & saveModel, std::string& dirMiplib,
     int numberGenerators = model->numberCutGenerators();
     for (int iGenerator=0;iGenerator<numberGenerators;iGenerator++) {
       CbcCutGenerator * generator = model->cutGenerator(iGenerator);
+#ifndef CLP_INVESTIGATE
+      CglImplication * implication = dynamic_cast<CglImplication*>(generator->generator());
+      if (implication)
+	continue;
+#endif
       std::cout<<generator->cutGeneratorName()<<" was tried "
 	       <<generator->numberTimesEntered()<<" times and created "
 	       <<generator->numberCutsInTotal()<<" cuts of which "
@@ -460,9 +555,10 @@ int CbcClpUnitTest (const CbcModel & saveModel, std::string& dirMiplib,
 	std::cout<<std::endl;
     }
     if (!model->status()) { 
-      double soln = model->getObjValue();       
-      CoinRelFltEq eq(1.0e-3) ;
-      if (eq(soln,objValue[m])) { 
+      double soln = model->getObjValue();  
+      double tolerance = CoinMax(1.0e-5,1.0e-5*CoinMin(fabs(soln),fabs(objValue[m])));
+      //CoinRelFltEq eq(1.0e-3) ;
+      if (fabs(soln-objValue[m])<tolerance) { 
         std::cout 
           <<"cbc_clp"<<" "
           << soln << " = " << objValue[m] << " ; okay";
@@ -478,10 +574,10 @@ int CbcClpUnitTest (const CbcModel & saveModel, std::string& dirMiplib,
     } else {
       std::cout << "error; too many nodes" ;
     }
+    timeTaken += timeOfSolution;
     std::cout<<" - took " <<timeOfSolution<<" seconds.("<<
       model->getNodeCount()<<" / "<<model->getIterationCount()<<
-      " )"<<std::endl;
-    timeTaken += timeOfSolution;
+      " ) subtotal "<<timeTaken<<std::endl;
     delete model;
   }
   int returnCode=0;

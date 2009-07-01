@@ -327,7 +327,10 @@ public:
 
       returns 1 feasible, 0 infeasible, -1 feasible but skip cuts
     */
-    int resolve(CbcNodeInfo * parent, int whereFrom);
+  int resolve(CbcNodeInfo * parent, int whereFrom,
+	      double * saveSolution=NULL,
+	      double * saveLower=NULL,
+	      double * saveUpper=NULL);
     /// Make given rows (L or G) into global cuts and remove from lp
     void makeGlobalCuts(int numberRows,const int * which); 
     /// Make given cut into a global cut
@@ -1194,12 +1197,33 @@ public:
   { return threadMode_;}
   /** Set thread mode
       always use numberThreads for branching
-      1 set then use numberThreads in root mini branch and bound
+      1 set then deterministic
       2 set then use numberThreads for root cuts
+      4 set then use numberThreads in root mini branch and bound
       default is 0
   */
   inline void setThreadMode(int value) 
   { threadMode_=value;}
+  /** Return
+      -2 if deterministic threaded and main thread
+      -1 if deterministic threaded and serial thread
+      0 if serial
+      1 if opportunistic threaded
+  */
+  inline int parallelMode() const
+  { if (!numberThreads_) {
+      if ((threadMode_&1)==0) 
+	return 0;
+      else
+	return -1;
+      return 0;
+    } else {
+      if ((threadMode_&1)==0) 
+	return 1;
+      else
+	return -2;
+    }
+  }
   /// Get number of "iterations" to stop after
   inline int getStopNumberIterations() const
   { return stopNumberIterations_;}
@@ -1486,6 +1510,11 @@ public:
       8 bit (256) - Set to say solution just found, unset by doing cuts
       9 bit (512) - Try reduced model after 100 nodes
       10 bit (1024) - Switch on some heuristics even if seems unlikely
+      11 bit (2048) - Mark as in small branch and bound
+      12 bit (4096) - Funny cuts so do slow way (in some places)
+      13 bit (8192) - Funny cuts so do slow way (in other places)
+      14 bit (16384) - Use Cplex! for fathoming
+      15 bit (32768) - Try reduced model after 0 nodes
   */
   /// Set special options
   inline void setSpecialOptions(int value)
@@ -1499,6 +1528,8 @@ public:
   /// Now we may not own objects - just point to solver's objects
   inline bool ownObjects() const
   { return ownObjects_;}
+  /// Check original model before it gets messed up
+  void checkModel();
   /// Pointer to a mutex 
   inline void * mutex()
   { return mutex_;}
@@ -1627,13 +1658,18 @@ public:
     penalties.  Returns number fixed
   */
   int reducedCostFix() ;
+  /** Makes all handlers same.  If makeDefault 1 then makes top level 
+      default and rest point to that.  If 2 then each is copy
+  */
+  void synchronizeHandlers(int makeDefault);
+     
   /// Encapsulates solver resolve
   int resolve(OsiSolverInterface * solver);
 
   /** Encapsulates choosing a variable -
       anyAction -2, infeasible (-1 round again), 0 done
   */
-  int chooseBranch(CbcNode * newNode, int numberPassesLeft,
+  int chooseBranch(CbcNode * & newNode, int numberPassesLeft,
 		   CbcNode * oldNode, OsiCuts & cuts,
 		   bool & resolved, CoinWarmStartBasis *lastws,
 		   const double * lowerBefore,const double * upperBefore,
@@ -1734,6 +1770,8 @@ public:
       2 - just delete - don't even use
   */
   void doHeuristicsAtRoot(int deleteHeuristicsAfterwards=0);
+  /// Adjust heuristics based on model
+  void adjustHeuristics();
   /// Get the hotstart solution 
   inline const double * hotstartSolution() const
   { return hotstartSolution_;}
@@ -1783,6 +1821,9 @@ public:
   inline void incrementExtra(int nodes, int iterations)
   { numberExtraNodes_ += nodes; numberExtraIterations_ += iterations;}
 #endif
+  /// Number of extra iterations
+  inline int numberExtraIterations() const
+  { return numberExtraIterations_;}
   /// Increment strong info
   void incrementStrongInfo(int numberTimes, int numberIterations,
 			   int numberFixed, bool ifInfeasible);
@@ -1921,6 +1962,8 @@ private:
   int numberNodes2_;
   /// Cumulative number of iterations
   int numberIterations_;
+  /// Cumulative number of solves
+  int numberSolves_;
   /// Status of problem - 0 finished, 1 stopped, 2 difficulties
   int status_;
   /** Secondary status of problem
@@ -1964,7 +2007,7 @@ private:
     allocated size.
   */
   CbcNodeInfo ** walkback_;
-  //#define NODE_LAST
+#define NODE_LAST
 #ifdef NODE_LAST
   CbcNodeInfo ** lastNodeInfo_;
   const OsiRowCut ** lastCut_;
@@ -2227,8 +2270,9 @@ private:
   int numberThreads_;
   /** thread mode
       always use numberThreads for branching
-      1 set then use numberThreads in root mini branch and bound
+      1 set then deterministic
       2 set then use numberThreads for root cuts
+      4 set then use numberThreads in root mini branch and bound
       default is 0
   */
   int threadMode_;

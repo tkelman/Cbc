@@ -214,6 +214,14 @@ public:
   inline int id() const
   { return id_;}
   
+  /// Get position in object_ list
+  inline int position() const
+  { return position_;}
+  
+  /// Set position in object_ list
+  inline void setPosition(int position)
+  { position_ = position;}
+  
    /// update model
   inline void setModel(CbcModel * model)
   { model_ = model;}
@@ -238,6 +246,8 @@ protected:
   CbcModel * model_;
   /// Identifier (normally column number in matrix)
   int id_;
+  /// Position in object list
+  int position_;
   /// If -1 down always chosen first, +1 up always, 0 normal
   int preferredWay_;
 

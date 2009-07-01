@@ -12,7 +12,7 @@
 
 AC_PREREQ(2.59)
 
-AC_INIT([Cbc],[stable2.2],[coin-cbc@list.coin-or.org])
+AC_INIT([Cbc],[2.3stable],[coin-cbc@list.coin-or.org])
 
 AC_COPYRIGHT([
 Copyright 2006 International Business Machines and others.
@@ -64,6 +64,7 @@ AC_COIN_HAS_PROJECT(DyLP)
 AC_COIN_HAS_PROJECT(Osi)
 AC_COIN_HAS_PROJECT(Vol)
 AC_COIN_HAS_PROJECT(SYMPHONY)
+AC_COIN_HAS_PROJECT(Cpx)
 
 #############################################################################
 #                            Third party solvers                            #
@@ -131,6 +132,7 @@ case $cbc_default_solver in
 esac
 AC_DEFINE_UNQUOTED([CBC_DEFAULT_SOLVER],"$cbc_default_solver",
   [Define to the name of the default solver to be used in cbc-generic in small letters])
+AC_DEFINE_UNQUOTED(CBCVERSION, "$PACKAGE_VERSION", "Version of Cbc")
 
 
 #############################################################################

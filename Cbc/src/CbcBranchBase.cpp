@@ -22,6 +22,7 @@ CbcObject::CbcObject()
   : OsiObject(),
     model_(NULL),
    id_(-1),
+   position_(-1),
    preferredWay_(0)
 {
 }
@@ -31,6 +32,7 @@ CbcObject::CbcObject(CbcModel * model)
   : OsiObject(),
     model_(model),
     id_(-1),
+    position_(-1),
     preferredWay_(0)
 {
 }
@@ -47,6 +49,7 @@ CbcObject::CbcObject ( const CbcObject & rhs)
 {
   model_ = rhs.model_;
   id_ = rhs.id_;
+  position_ = rhs.position_;
   preferredWay_ = rhs.preferredWay_;
 }
 
@@ -58,6 +61,7 @@ CbcObject::operator=( const CbcObject& rhs)
     OsiObject::operator=(rhs);
     model_ = rhs.model_;
     id_ = rhs.id_;
+    position_ = rhs.position_;
     preferredWay_ = rhs.preferredWay_;
   }
   return *this;

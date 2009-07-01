@@ -339,10 +339,10 @@ CbcTreeLocal::top() const{
   for (int i=0;i<n;i++) {
     int nn=nodes_[i]->nodeInfo()->nodeNumber();
     double dd = nodes_[i]->objectiveValue();
-    largest=max(largest,nn);
-    smallest=min(smallest,nn);
-    largestD=max(largestD,dd);
-    smallestD=min(smallestD,dd);
+    largest=CoinMax(largest,nn);
+    smallest=CoinMin(smallest,nn);
+    largestD=CoinMax(largestD,dd);
+    smallestD=CoinMin(smallestD,dd);
   }
   if (model_->messageHandler()->logLevel()>0) {
     printf("smallest %d, largest %d, top %d\n",smallest,largest,
@@ -373,7 +373,7 @@ CbcTreeLocal::push(CbcNode * x) {
       // stop on first solution
       searchType_=0;
     }
-    startTime_ = (int) CoinCpuTime();
+    startTime_ = static_cast<int> (CoinCpuTime());
     saveNumberSolutions_ = model_->getSolutionCount();
   }
   nodes_.push_back(x);
@@ -441,7 +441,7 @@ CbcTreeLocal::empty()
     printf("local state %d after %d nodes and %d seconds, new solution %g, best solution %g, k was %g\n",
 	   state,
 	   model_->getNodeCount()-startNode_,
-	   (int) CoinCpuTime()-startTime_,
+	   static_cast<int> (CoinCpuTime())-startTime_,
 	   model_->getCutoff()+increment,bestCutoff_+increment,rhs_);
   saveNumberSolutions_ = model_->getSolutionCount();
   bool finished=false;
@@ -648,7 +648,7 @@ CbcTreeLocal::empty()
       }
     }
     // put back node
-    startTime_ = (int) CoinCpuTime();
+    startTime_ = static_cast<int> (CoinCpuTime());
     startNode_=model_->getNodeCount();
     if (localNode_) {
       // save copy of node
@@ -812,7 +812,7 @@ CbcTreeLocal::reverseCut(int state, double bias)
   double smallest=COIN_DBL_MAX;
   CoinPackedVector row = cut_.row();
   for (int k=0; k<row.getNumElements(); k++)
-    smallest = min(smallest,fabs(row.getElements()[k]));
+    smallest = CoinMin(smallest,fabs(row.getElements()[k]));
   if (!typeCuts_&&!refine_) {
     // Reverse cut very very weakly
     if (state>2)

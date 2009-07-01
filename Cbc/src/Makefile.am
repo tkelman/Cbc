@@ -44,6 +44,8 @@ libCbc_la_SOURCES = \
 	CbcHeuristicFPump.cpp CbcHeuristicFPump.hpp \
 	CbcHeuristicGreedy.cpp CbcHeuristicGreedy.hpp \
 	CbcHeuristicLocal.cpp CbcHeuristicLocal.hpp \
+	CbcHeuristicPivotAndFix.cpp CbcHeuristicPivotAndFix.hpp \
+	CbcHeuristicRandRound.cpp CbcHeuristicRandRound.hpp \
 	CbcHeuristicRINS.cpp CbcHeuristicRINS.hpp \
 	CbcMessage.cpp CbcMessage.hpp \
 	CbcModel.cpp CbcModel.hpp \
@@ -118,6 +120,12 @@ AM_CPPFLAGS += -I`$(CYGPATH_W) $(CLPSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(CLPOBJDIR)/inc`
 LIBS  += `cat $(CLPOBJDIR)/clp_addlibs.txt`
 
+if COIN_HAS_CPX
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(CPXINCDIR)` \
+	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiCpx`
+  cbc_LDADD += $(OSIOBJDIR)/src/OsiCpx/libOsiCpx.la
+endif
+
 # If we have the Ampl solver library, we need to add additional things
 if COIN_HAS_ASL
 #cbc_SOURCES += Cbc_ampl.cpp Cbc_ampl.h
@@ -170,7 +178,7 @@ endif
 if COIN_HAS_CPX
   AM_CPPFLAGS += -I`$(CYGPATH_W) $(CPXINCDIR)` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiCpx`
-  cbc_generic_LDADD += $(OSIOBJDIR)/src/OsiCpx/libOsiCpx.la
+  cbc_generic_LDADD += $(OSIOBJDIR)/src/OsiCpx/libOsiCpx.la 
 endif
 
 if COIN_HAS_DYLP
@@ -275,6 +283,7 @@ AM_CPPFLAGS += \
 	-I`$(CYGPATH_W) $(CGLSRCDIR)/src/CglTwomir` \
 	-I`$(CYGPATH_W) $(CGLSRCDIR)/src/CglLandP` \
 	-I`$(CYGPATH_W) $(CGLSRCDIR)/src/CglResidualCapacity` \
+	-I`$(CYGPATH_W) $(CGLSRCDIR)/src/CglZeroHalf` \
 	-I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(COINUTILSOBJDIR)/inc` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src` \
@@ -319,6 +328,8 @@ includecoin_HEADERS = \
 	CbcHeuristicFPump.hpp \
 	CbcHeuristicGreedy.hpp \
 	CbcHeuristicLocal.hpp \
+	CbcHeuristicPivotAndFix.hpp \
+	CbcHeuristicRandRound.hpp \
 	CbcHeuristicRINS.hpp \
 	CbcMessage.hpp \
 	CbcModel.hpp \

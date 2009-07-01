@@ -20,6 +20,8 @@ class CoinWarmStartBasis;
 class CbcCountRowCut;
 class CbcModel;
 class CbcNode;
+class CbcSubProblem;
+class CbcGeneralBranchingObject;
 
 //#############################################################################
 /** Information required to recreate the subproblem at this node
@@ -143,6 +145,10 @@ public:
   inline int numberBranchesLeft() const
   {return numberBranchesLeft_;}
 
+  /// Set number of branches left in object
+  inline void setNumberBranchesLeft(int value)
+  {numberBranchesLeft_ = value;}
+
   /// Return number of objects pointing to this
   inline int numberPointingToThis() const
   {return numberPointingToThis_;}
@@ -150,6 +156,10 @@ public:
   /// Set number of objects pointing to this
   inline void setNumberPointingToThis(int number)
   {numberPointingToThis_=number;}
+
+  /// Increment number of objects pointing to this
+  inline void incrementNumberPointingToThis()
+  {numberPointingToThis_ ++;}
 
   /// Say one branch taken 
   inline int branchedOn()
@@ -166,7 +176,8 @@ public:
   inline void nullParent()
   { parent_=NULL;}
 
-  void addCuts(OsiCuts & cuts,int numberToBranch, int * whichGenerator);
+  void addCuts(OsiCuts & cuts,int numberToBranch, int * whichGenerator
+	       ,int numberPointingToThis);
   void addCuts(int numberCuts, CbcCountRowCut ** cuts,int numberToBranch);
   /** Delete cuts (decrements counts)
       Slow unless cuts in same order as saved
@@ -233,6 +244,8 @@ public:
   /// Branching object for the parent
   inline const OsiBranchingObject * parentBranch() const
   { return parentBranch_;}
+  /// If we need to take off parent based data
+  void unsetParentBasedData();
 protected:
 
   /** Number of other nodes pointing to this node.
@@ -439,7 +452,6 @@ private:
   /// Illegal Assignment operator 
   CbcPartialNodeInfo & operator=(const CbcPartialNodeInfo& rhs);
 };
-
 
 
 /** Information required while the node is live
@@ -651,6 +663,9 @@ public:
   /// Depth in branch-and-cut search tree
   inline int depth() const
   {return depth_;}
+  /// Set depth in branch-and-cut search tree
+  inline void setDepth(int value)
+  {depth_ = value;}
   /// Get the number of objects unsatisfied at this node.
   inline int numberUnsatisfied() const
   { return numberUnsatisfied_;}

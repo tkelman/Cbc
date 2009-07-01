@@ -225,7 +225,7 @@ CbcHeuristicRINS::solution(double & solutionValue,
       }
       numberTries_++;
       if ((numberTries_%10)==0&&numberSuccesses_*3<numberTries_)
-	howOften_ += (int) (howOften_*decayFactor_);
+	howOften_ += static_cast<int> (howOften_*decayFactor_);
     }
 
     delete newSolver;
@@ -541,7 +541,7 @@ CbcHeuristicDINS::solution(double & solutionValue,
       int iColumn = integerVariable[i];
       double value=bestSolution[iColumn];
       double nearest=floor(value+0.5);
-      values_[0][i]=(int) nearest;
+      values_[0][i]=static_cast<int> (nearest);
     }
     numberKeptSolutions_ = CoinMin(numberKeptSolutions_+1,maximumKeepSolutions_);
   } 
@@ -590,7 +590,7 @@ CbcHeuristicDINS::solution(double & solutionValue,
 	} else if (valueInt>originalUpper) {
 	  valueInt=originalUpper;
 	}
-	int intValue = (int) floor(valueInt+0.5);
+	int intValue = static_cast<int> (floor(valueInt+0.5));
 	double currentValue = currentSolution[iColumn];
 	double currentLower = colLower[iColumn];
 	double currentUpper = colUpper[iColumn];
@@ -670,8 +670,13 @@ CbcHeuristicDINS::solution(double & solutionValue,
 	  }
 	}
       }
-      printf("%d fixed, %d same as cont/int, %d same as int - %d bounded %d in cut\n",
-	     nFix,nCouldFix,nCouldFix2,nBound,nEl);
+      char generalPrint[200];
+      sprintf(generalPrint,
+	      "%d fixed, %d same as cont/int, %d same as int - %d bounded %d in cut\n",
+	      nFix,nCouldFix,nCouldFix2,nBound,nEl);
+      model_->messageHandler()->message(CBC_FPUMP2,model_->messages())
+	<< generalPrint
+	<<CoinMessageEol;
       if (nFix>numberIntegers/10) {
 #if 0
 	newSolver->initialSolve();
@@ -732,7 +737,7 @@ CbcHeuristicDINS::solution(double & solutionValue,
     }
     numberTries_++;
     if ((numberTries_%10)==0&&numberSuccesses_*3<numberTries_)
-      howOften_ += (int) (howOften_*decayFactor_);
+      howOften_ += static_cast<int> (howOften_*decayFactor_);
   }
   return finalReturnCode;
 }

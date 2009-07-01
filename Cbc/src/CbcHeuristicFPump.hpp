@@ -4,6 +4,7 @@
 #define CbcHeuristicFeasibilityPump_H
 
 #include "CbcHeuristic.hpp"
+#include "OsiClpSolverInterface.hpp"
 
 /** Rounding class
  */
@@ -179,7 +180,9 @@ protected:
        1 - do not reuse solves, accumulate integer solutions for local search
        2 - reuse solves, do not accumulate integer solutions for local search
        3 - reuse solves, accumulate integer solutions for local search
-       If we add 4 then use second form of problem (with extra rows and variables)
+       If we add 4 then use second form of problem (with extra rows and variables for general integers)
+       If we do not accumulate solutions then no mini branch and bounds will be done
+       reuse - refers to initial solve after adding in new "cut"
   */
   int accumulate_;
   /**  Set whether to fix variables on known solution
@@ -198,7 +201,7 @@ private:
   */
   int rounds(OsiSolverInterface * solver,double * solution, const double * objective, 
 	     int numberIntegers, const int * integerVariable,
-	     char * pumpPrint,int & passNumber,
+	     char * pumpPrint,int passNumber,
 	     bool roundExpensive=false,
 	     double downValue=0.5, int *flip=0);
   /* note for eagle eyed readers.
@@ -207,5 +210,63 @@ private:
   */
 };
 
+# ifdef COIN_HAS_CLP
+  
+class CbcDisasterHandler : public OsiClpDisasterHandler {
+public:
+  /**@name Virtual methods that the derived classe should provide.
+  */
+  //@{
+#if 0
+  /// Into simplex
+  virtual void intoSimplex();
+  /// Checks if disaster
+  virtual bool check() const ;
+  /// saves information for next attempt
+  virtual void saveInfo();
+#endif
+  /// Type of disaster 0 can fix, 1 abort
+  virtual int typeOfDisaster();
+  //@}
+  
+  
+  /**@name Constructors, destructor */
+
+  //@{
+  /** Default constructor. */
+  CbcDisasterHandler(CbcModel * model = NULL);
+  /** Destructor */
+  virtual ~CbcDisasterHandler();
+  // Copy
+  CbcDisasterHandler(const CbcDisasterHandler&);
+  // Assignment
+  CbcDisasterHandler& operator=(const CbcDisasterHandler&);
+  /// Clone
+  virtual ClpDisasterHandler * clone() const;
+
+  //@}
+  
+  /**@name Sets/gets */
+
+  //@{
+  /** set model. */
+  void setCbcModel(CbcModel * model);
+  /// Get model
+  inline CbcModel * cbcModel() const
+  { return cbcModel_;}
+  
+  //@}
+  
+  
+protected:
+  /**@name Data members
+     The data members are protected to allow access for derived classes. */
+  //@{
+  /// Pointer to model
+  CbcModel * cbcModel_;
+      
+  //@}
+};
+#endif
 
 #endif

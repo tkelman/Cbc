@@ -529,7 +529,7 @@ CbcSOS::infeasibility(int & preferredWay) const
     //break;
     // probably best to use pseudo duals
     double value = lastNonZero-firstNonZero+1;
-    value *= 0.5/((double) numberMembers_);
+    value *= 0.5/static_cast<double> (numberMembers_);
     // adjust??
     return value;
   } else {
@@ -584,7 +584,7 @@ CbcSOS::infeasibility(const OsiBranchingInformation * info,
     // find where to branch
     assert (sum>0.0);
     weight /= sum;
-    if (info->defaultDual_>=0.0&&info->usefulRegion_) {
+    if (info->defaultDual_>=0.0&&info->usefulRegion_&&info->columnStart_) {
       assert (sosType_==1);
       int iWhere;
       for (iWhere=firstNonZero;iWhere<lastNonZero-1;iWhere++) {
@@ -607,6 +607,8 @@ CbcSOS::infeasibility(const OsiBranchingInformation * info,
       for (iWhere=firstNonZero;iWhere<lastNonZero;iWhere++) {
 	int jColumn = members_[iWhere];
 	double solValue = info->solution_[jColumn];
+	if (!solValue)
+	  continue;
 	objMove -= info->objective_[jColumn]*solValue;
 	for (j=info->columnStart_[jColumn];
 	     j<info->columnStart_[jColumn]+info->columnLength_[jColumn];j++) {
@@ -721,10 +723,10 @@ CbcSOS::infeasibility(const OsiBranchingInformation * info,
       double upCost = shadowEstimateUp_;
       if (numberTimesDown_) 
 	downCost *= downDynamicPseudoRatio_/
-	  ((double) numberTimesDown_);
+	  static_cast<double> (numberTimesDown_);
       if (numberTimesUp_) 
 	upCost *= upDynamicPseudoRatio_/
-	  ((double) numberTimesUp_);
+	  static_cast<double> (numberTimesUp_);
 #define WEIGHT_AFTER 0.7
 #define WEIGHT_BEFORE 0.1
       int stateOfSearch = model_->stateOfSearch()%10;
@@ -746,7 +748,7 @@ CbcSOS::infeasibility(const OsiBranchingInformation * info,
       return returnValue;
     } else {
       double value = lastNonZero-firstNonZero+1;
-      value *= 0.5/((double) numberMembers_);
+      value *= 0.5/static_cast<double> (numberMembers_);
       return value;
     }
   } else {
@@ -1227,18 +1229,25 @@ CbcSimpleInteger::fillCreateBranch(CbcIntegerBranchingObject * branch, const Osi
   value = CoinMax(value, info->lower_[columnNumber_]);
   value = CoinMin(value, info->upper_[columnNumber_]);
   assert (info->upper_[columnNumber_]>info->lower_[columnNumber_]);
-  if (!info->hotstartSolution_) {
+  if (!info->hotstartSolution_&&priority_!=-999) {
 #ifndef NDEBUG
     double nearest = floor(value+0.5);
     assert (fabs(value-nearest)>info->integerTolerance_);
 #endif
-  } else {
+  } else if (info->hotstartSolution_) {
     double targetValue = info->hotstartSolution_[columnNumber_];
     if (way>0)
       value = targetValue-0.1;
     else
       value = targetValue+0.1;
+  } else {
+    if (value<=info->lower_[columnNumber_])
+      value += 0.1;
+    else if (value>=info->upper_[columnNumber_])
+      value -= 0.1;
   }
+  assert (value>=info->lower_[columnNumber_]&&
+	  value<=info->upper_[columnNumber_]);
   branch->fillPart(columnNumber_,way,value);
 }
 /* Column number if single column object -1 otherwise,
@@ -2980,7 +2989,7 @@ CbcBranchDefaultDecision::betterBranch(CbcBranchingObject * thisOne,
       if (numInfUp<bestNumber) {
 	better=true;
       } else if (numInfUp==bestNumber) {
-	if (min(changeUp,changeDn)<bestCriterion_)
+	if (CoinMin(changeUp,changeDn)<bestCriterion_)
 	  better=true;;
       }
       if (better) {
@@ -3076,7 +3085,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
 	  
 	  if (numberNext<numberUnsatisfied) {
 	    int numberUp = numberUnsatisfied - numberInfeasibilitiesUp[i];
-	    double perUnsatisfied = changeUp[i]/(double) numberUp;
+	    double perUnsatisfied = changeUp[i]/static_cast<double> (numberUp);
 	    double estimatedObjective = objectiveValue + numberUnsatisfied * perUnsatisfied;
 	    if (estimatedObjective<cutoff) 
 	      method=3;
@@ -3084,7 +3093,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
 	  numberNext = numberInfeasibilitiesDown[i];
 	  if (numberNext<numberUnsatisfied) {
 	    int numberDown = numberUnsatisfied - numberInfeasibilitiesDown[i];
-	    double perUnsatisfied = changeDown[i]/(double) numberDown;
+	    double perUnsatisfied = changeDown[i]/static_cast<double> (numberDown);
 	    double estimatedObjective = objectiveValue + numberUnsatisfied * perUnsatisfied;
 	    if (estimatedObjective<cutoff) 
 	      method=3;
@@ -3112,7 +3121,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
     case 0:
       // could add in depth as well
       for ( i = 0 ; i < numberObjects ; i++) {
-	int thisNumber = min(numberInfeasibilitiesUp[i],numberInfeasibilitiesDown[i]);
+	int thisNumber = CoinMin(numberInfeasibilitiesUp[i],numberInfeasibilitiesDown[i]);
 	if (thisNumber<=bestNumber) {
 	  int betterWay=0;
 	  if (numberInfeasibilitiesUp[i]<numberInfeasibilitiesDown[i]) {
@@ -3135,7 +3144,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
 	    if (numberInfeasibilitiesUp[i]<bestNumber) {
 	      better=true;
 	    } else if (numberInfeasibilitiesUp[i]==bestNumber) {
-	      if (min(changeUp[i],changeDown[i])<bestCriterion)
+	      if (CoinMin(changeUp[i],changeDown[i])<bestCriterion)
 		better=true;;
 	    }
 	    if (better) {
@@ -3147,7 +3156,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
 	    }
 	  }
 	  if (betterWay) {
-	    bestCriterion = min(changeUp[i],changeDown[i]);
+	    bestCriterion = CoinMin(changeUp[i],changeDown[i]);
 	    bestNumber = thisNumber;
 	    whichObject = i;
 	    bestWay = betterWay;
@@ -3166,7 +3175,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
 	    betterWay=-1;
 	}
 	if (betterWay) {
-	  bestCriterion = min(changeUp[i],changeDown[i]);
+	  bestCriterion = CoinMin(changeUp[i],changeDown[i]);
 	  whichObject = i;
 	  bestWay = betterWay;
 	}
@@ -3174,7 +3183,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
       break;
     case 2:
       for ( i = 0 ; i < numberObjects ; i++) {
-	double change = min(changeUp[i],changeDown[i]);
+	double change = CoinMin(changeUp[i],changeDown[i]);
 	double sum = changeUp[i] + changeDown[i];
 	bool take=false;
 	if (change>1.1*bestCriterion) 
@@ -3201,7 +3210,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
 	
 	if (numberNext<numberUnsatisfied) {
 	  int numberUp = numberUnsatisfied - numberInfeasibilitiesUp[i];
-	  double perUnsatisfied = changeUp[i]/(double) numberUp;
+	  double perUnsatisfied = changeUp[i]/static_cast<double> (numberUp);
 	  double estimatedObjective = objectiveValue + numberUnsatisfied * perUnsatisfied;
 	  if (estimatedObjective<bestEstimate) {
 	    bestEstimate = estimatedObjective;
@@ -3212,7 +3221,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
 	numberNext = numberInfeasibilitiesDown[i];
 	if (numberNext<numberUnsatisfied) {
 	  int numberDown = numberUnsatisfied - numberInfeasibilitiesDown[i];
-	  double perUnsatisfied = changeDown[i]/(double) numberDown;
+	  double perUnsatisfied = changeDown[i]/static_cast<double> (numberDown);
 	  double estimatedObjective = objectiveValue + numberUnsatisfied * perUnsatisfied;
 	  if (estimatedObjective<bestEstimate) {
 	    bestEstimate = estimatedObjective;
@@ -3227,7 +3236,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
       // first get best number or when going down
       // now choose smallest change up amongst equal number infeas
       for ( i = 0 ; i < numberObjects ; i++) {
-	int thisNumber = min(numberInfeasibilitiesUp[i],numberInfeasibilitiesDown[i]);
+	int thisNumber = CoinMin(numberInfeasibilitiesUp[i],numberInfeasibilitiesDown[i]);
 	if (thisNumber<=bestNumber) {
 	  int betterWay=0;
 	  if (numberInfeasibilitiesUp[i]<numberInfeasibilitiesDown[i]) {
@@ -3250,7 +3259,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
 	    if (numberInfeasibilitiesUp[i]<bestNumber) {
 	      better=true;
 	    } else if (numberInfeasibilitiesUp[i]==bestNumber) {
-	      if (min(changeUp[i],changeDown[i])<bestCriterion)
+	      if (CoinMin(changeUp[i],changeDown[i])<bestCriterion)
 		better=true;;
 	    }
 	    if (better) {
@@ -3262,7 +3271,7 @@ CbcBranchDefaultDecision::bestBranch (CbcBranchingObject ** objects, int numberO
 	    }
 	  }
 	  if (betterWay) {
-	    bestCriterion = min(changeUp[i],changeDown[i]);
+	    bestCriterion = CoinMin(changeUp[i],changeDown[i]);
 	    bestNumber = thisNumber;
 	    whichObject = i;
 	    bestWay = betterWay;
@@ -3341,7 +3350,7 @@ CbcFollowOn::CbcFollowOn (CbcModel * model)
 	    good=false;
 	}
 	if (good)
-	  rhs_[i]=(int) value;
+	  rhs_[i]=static_cast<int> (value);
       }
     }
   }
@@ -3432,7 +3441,7 @@ CbcFollowOn::gutsOfFollowOn(int & otherRow, int & preferredWay) const
 	  if (solValue<1.0-integerTolerance&&solValue>integerTolerance)
 	    numberUnsatisfied++;
 	} else {
-	  rhsValue -= (int)(value*floor(solValue+0.5));
+	  rhsValue -= static_cast<int>(value*floor(solValue+0.5));
 	}
       }
       if (numberUnsatisfied>1) {
@@ -3785,9 +3794,11 @@ CbcRangeCompare
 CbcFixingBranchingObject::compareBranchingObject
 (const CbcBranchingObject* brObj, const bool replaceIfOverlap)
 {
+#ifndef NDEBUG
   const CbcFixingBranchingObject* br =
     dynamic_cast<const CbcFixingBranchingObject*>(brObj);
   assert(br);
+#endif
   // If two FixingBranchingObject's have the same base object then it's pretty
   // much guaranteed
   throw("must implement");
@@ -4458,7 +4469,8 @@ CbcGeneral::operator=( const CbcGeneral& rhs)
 // Default Constructor 
 CbcGeneralDepth::CbcGeneralDepth ()
   : CbcGeneral(),
-    maximumDepth_(-1),
+    maximumDepth_(0),
+    maximumNodes_(0),
     whichSolution_(-1),
     numberNodes_(0),
     nodeInfo_(NULL)
@@ -4469,17 +4481,34 @@ CbcGeneralDepth::CbcGeneralDepth ()
 CbcGeneralDepth::CbcGeneralDepth (CbcModel * model, int maximumDepth)
   : CbcGeneral(model),
     maximumDepth_(maximumDepth),
+    maximumNodes_(0),
     whichSolution_(-1),
     numberNodes_(0),
     nodeInfo_(NULL)
 {
-  if (maximumDepth_>=0) {
+  assert(maximumDepth_<1000000);
+  if (maximumDepth_>0) 
+    maximumNodes_ = (1<<maximumDepth_)+1+maximumDepth_;
+  else if (maximumDepth_<0)
+    maximumNodes_ = 1+1-maximumDepth_;
+  else
+    maximumNodes_ = 0;
+#define MAX_NODES 100
+  maximumNodes_ = CoinMin(maximumNodes_,1+maximumDepth_+MAX_NODES);
+  if (maximumNodes_) {
     nodeInfo_ = new ClpNodeStuff();
+    nodeInfo_->maximumNodes_=maximumNodes_;
     ClpNodeStuff * info = nodeInfo_;
-    info->nDepth_=maximumDepth_;
-    int n = (1<<maximumDepth_)+1+maximumDepth_;
-    ClpNode ** nodeInfo = new ClpNode * [n];
-    for (int i=0;i<n;i++) 
+    // for reduced costs and duals
+    info->solverOptions_ |= 7;
+    if (maximumDepth_>0) {
+      info->nDepth_ = maximumDepth_;
+    } else {
+      info->nDepth_ = - maximumDepth_;
+      info->solverOptions_ |= 32;
+    }
+    ClpNode ** nodeInfo = new ClpNode * [maximumNodes_];
+    for (int i=0;i<maximumNodes_;i++) 
       nodeInfo[i]=NULL;
     info->nodeInfo_ = nodeInfo;
   } else {
@@ -4492,17 +4521,23 @@ CbcGeneralDepth::CbcGeneralDepth ( const CbcGeneralDepth & rhs)
   :CbcGeneral(rhs)
 {
   maximumDepth_ = rhs.maximumDepth_;
+  maximumNodes_ = rhs.maximumNodes_;
   whichSolution_ = -1;
   numberNodes_ = 0;
-  if (maximumDepth_>=0) {
+  if (maximumNodes_) {
     assert (rhs.nodeInfo_);
     nodeInfo_ = new ClpNodeStuff(*rhs.nodeInfo_);
+    nodeInfo_->maximumNodes_=maximumNodes_;
     ClpNodeStuff * info = nodeInfo_;
-    info->nDepth_=maximumDepth_;
+    if (maximumDepth_>0) {
+      info->nDepth_ = maximumDepth_;
+    } else {
+      info->nDepth_ = - maximumDepth_;
+      info->solverOptions_ |= 32;
+    }
     if (!info->nodeInfo_) {
-      int n = (1<<maximumDepth_)+1+maximumDepth_;
-      ClpNode ** nodeInfo = new ClpNode * [n];
-      for (int i=0;i<n;i++) 
+      ClpNode ** nodeInfo = new ClpNode * [maximumNodes_];
+      for (int i=0;i<maximumNodes_;i++) 
 	nodeInfo[i]=NULL;
       info->nodeInfo_ = nodeInfo;
     }
@@ -4526,11 +4561,13 @@ CbcGeneralDepth::operator=( const CbcGeneralDepth& rhs)
     CbcGeneral::operator=(rhs);
     delete nodeInfo_;
     maximumDepth_ = rhs.maximumDepth_;
+    maximumNodes_ = rhs.maximumNodes_;
     whichSolution_ = -1;
     numberNodes_ = 0;
-    if (maximumDepth_>=0) {
+    if (maximumDepth_) {
       assert (rhs.nodeInfo_);
       nodeInfo_ = new ClpNodeStuff(*rhs.nodeInfo_);
+      nodeInfo_->maximumNodes_=maximumNodes_;
     } else {
       nodeInfo_ = NULL;
     }
@@ -4543,7 +4580,6 @@ CbcGeneralDepth::~CbcGeneralDepth ()
 {
   delete nodeInfo_;
 }
-
 // Infeasibility - large is 0.5
 double 
 CbcGeneralDepth::infeasibility(int & preferredWay) const
@@ -4573,7 +4609,7 @@ CbcGeneralDepth::infeasibility(int & preferredWay) const
       info->fillPseudoCosts(down,up,numberDown,numberUp,
 			    numberDownInfeasible,
 			    numberUpInfeasible,numberIntegers);
-      info->presolveType_= 1; //1 later
+      info->presolveType_= 1; 
       delete [] down;
       delete [] up;
       delete [] numberDown;
@@ -4589,6 +4625,10 @@ CbcGeneralDepth::infeasibility(int & preferredWay) const
 	simplex->setLogLevel(0);
       clpSolver->setBasis();
       whichSolution_ = simplex->fathomMany(info);
+      //printf("FAT %d nodes, %d iterations\n",
+      //info->numberNodesExplored_,info->numberIterations_);
+      //printf("CbcBranch %d rows, %d columns\n",clpSolver->getNumRows(),
+      //     clpSolver->getNumCols());
       model_->incrementExtra(info->numberNodesExplored_,
 			     info->numberIterations_);
       // update pseudo costs
@@ -4599,9 +4639,14 @@ CbcGeneralDepth::infeasibility(int & preferredWay) const
       const int * integerVariable = model_->integerVariable();
 #endif
       for (int i=0;i<numberIntegers;i++) {
+#ifndef NDEBUG
 	CbcSimpleIntegerDynamicPseudoCost * obj =
 	  dynamic_cast <CbcSimpleIntegerDynamicPseudoCost *>(objects[i]) ;
 	assert (obj&&obj->columnNumber()==integerVariable[i]);
+#else
+	CbcSimpleIntegerDynamicPseudoCost * obj =
+	  static_cast <CbcSimpleIntegerDynamicPseudoCost *>(objects[i]) ;
+#endif
 	if (info->numberUp_[i]>0) {
 	  if (info->downPseudo_[i]>largest)
 	    largest=info->downPseudo_[i];
@@ -4670,6 +4715,8 @@ CbcGeneralDepth::createBranch(int way)
   CbcGeneralBranchingObject * branch = new CbcGeneralBranchingObject(model_);
   // skip solution
   branch->numberSubProblems_ = numberDo;
+  // If parentBranch_ back in then will have to be 2*
+  branch->numberSubLeft_ = numberDo;
   branch->setNumberBranches(numberDo);
   CbcSubProblem * sub = new CbcSubProblem[numberDo];
   int iProb=0;
@@ -4721,7 +4768,7 @@ CbcGeneralDepth::createBranch(int way)
     node->applyNode(simplex,3);
     // create subproblem
     sub[iProb]=CbcSubProblem(clpSolver,lowerBefore,upperBefore,
-			     node->statusArray());
+			     node->statusArray(),node->depth());
     sub[iProb].objectiveValue_ = node->objectiveValue();
     sub[iProb].sumInfeasibilities_ = node->sumInfeasibilities();
     sub[iProb].numberInfeasibilities_ = node->numberInfeasibilities();
@@ -4768,8 +4815,11 @@ CbcGeneralBranchingObject::CbcGeneralBranchingObject()
    subProblems_(NULL),
    node_(NULL),
    numberSubProblems_(0),
+   numberSubLeft_(0),
+   whichNode_(-1),
    numberRows_(0)
 {
+  //  printf("CbcGeneral %x default constructor\n",this);
 }
 
 // Useful constructor
@@ -4778,8 +4828,11 @@ CbcGeneralBranchingObject::CbcGeneralBranchingObject (CbcModel * model)
    subProblems_(NULL),
    node_(NULL),
    numberSubProblems_(0),
+   numberSubLeft_(0),
+   whichNode_(-1),
    numberRows_(0)
 {
+  //printf("CbcGeneral %x useful constructor\n",this);
 }
 
 // Copy constructor 
@@ -4788,8 +4841,11 @@ CbcGeneralBranchingObject::CbcGeneralBranchingObject ( const CbcGeneralBranching
    subProblems_(NULL),
    node_(rhs.node_),
    numberSubProblems_(rhs.numberSubProblems_),
+   numberSubLeft_(rhs.numberSubLeft_),
+   whichNode_(rhs.whichNode_),
    numberRows_(rhs.numberRows_)
 {
+  abort();
   if (numberSubProblems_) {
     subProblems_ = new CbcSubProblem[numberSubProblems_];
     for (int i=0;i<numberSubProblems_;i++)
@@ -4802,9 +4858,12 @@ CbcGeneralBranchingObject &
 CbcGeneralBranchingObject::operator=( const CbcGeneralBranchingObject& rhs)
 {
   if (this != &rhs) {
+    abort();
     CbcBranchingObject::operator=(rhs);
     delete [] subProblems_;
     numberSubProblems_ = rhs.numberSubProblems_;
+    numberSubLeft_ = rhs.numberSubLeft_;
+    whichNode_ = rhs.whichNode_;
     numberRows_ = rhs.numberRows_;
     if (numberSubProblems_) {
       subProblems_ = new CbcSubProblem[numberSubProblems_];
@@ -4827,45 +4886,62 @@ CbcGeneralBranchingObject::clone() const
 // Destructor 
 CbcGeneralBranchingObject::~CbcGeneralBranchingObject ()
 {
+  //printf("CbcGeneral %x destructor\n",this);
   delete [] subProblems_;
 }
 bool doingDoneBranch=false;
 double
 CbcGeneralBranchingObject::branch()
 {
-  assert (node_);
   double cutoff=model_->getCutoff();
-  bool applied=false;
-  while (numberBranchesLeft()) {
-    int which = branchIndex();
-    decrementNumberBranchesLeft();
-    CbcSubProblem * thisProb = subProblems_+which;
-    if (thisProb->objectiveValue_<cutoff) {
-      //printf("branch %x (sub %x) which now %d\n",this,
-      //     subProblems_,which);
-      OsiSolverInterface * solver = model_->solver();
-      thisProb->apply(solver);
-      OsiClpSolverInterface * clpSolver 
-	= dynamic_cast<OsiClpSolverInterface *> (solver);
-      assert (clpSolver);
-      // Move status to basis
-      clpSolver->setWarmStart(NULL);
-      //ClpSimplex * simplex = clpSolver->getModelPtr();
-      node_->setObjectiveValue(thisProb->objectiveValue_);
-      node_->setSumInfeasibilities(thisProb->sumInfeasibilities_);
-      node_->setNumberUnsatisfied(thisProb->numberInfeasibilities_);
-      applied=true;
-      doingDoneBranch=true;
-      break;
-    } else if (numberBranchesLeft()) {
-      node_->nodeInfo()->branchedOn() ;
+  //printf("GenB %x whichNode %d numberLeft %d which %d\n",
+  // this,whichNode_,numberBranchesLeft(),branchIndex());
+  if (whichNode_<0) {
+    assert (node_);
+    bool applied=false;
+    while (numberBranchesLeft()) {
+      int which = branchIndex();
+      decrementNumberBranchesLeft();
+      CbcSubProblem * thisProb = subProblems_+which;
+      if (thisProb->objectiveValue_<cutoff) {
+	//printf("branch %x (sub %x) which now %d\n",this,
+	//     subProblems_,which);
+	OsiSolverInterface * solver = model_->solver();
+	thisProb->apply(solver);
+	OsiClpSolverInterface * clpSolver 
+	  = dynamic_cast<OsiClpSolverInterface *> (solver);
+	assert (clpSolver);
+	// Move status to basis
+	clpSolver->setWarmStart(NULL);
+	//ClpSimplex * simplex = clpSolver->getModelPtr();
+	node_->setObjectiveValue(thisProb->objectiveValue_);
+	node_->setSumInfeasibilities(thisProb->sumInfeasibilities_);
+	node_->setNumberUnsatisfied(thisProb->numberInfeasibilities_);
+	applied=true;
+	doingDoneBranch=true;
+	break;
+      } else if (numberBranchesLeft()) {
+	node_->nodeInfo()->branchedOn() ;
+      }
     }
-  }
-  if (!applied) {
-    // no good one
-    node_->setObjectiveValue(cutoff+1.0e20);
-    node_->setSumInfeasibilities(1.0);
-    node_->setNumberUnsatisfied(1);
+    if (!applied) {
+      // no good one
+      node_->setObjectiveValue(cutoff+1.0e20);
+      node_->setSumInfeasibilities(1.0);
+      node_->setNumberUnsatisfied(1);
+      assert (whichNode_<0);
+    }
+  } else {
+    decrementNumberBranchesLeft();
+    CbcSubProblem * thisProb = subProblems_+whichNode_;
+    assert (thisProb->objectiveValue_<cutoff);
+    OsiSolverInterface * solver = model_->solver();
+    thisProb->apply(solver);
+    //OsiClpSolverInterface * clpSolver 
+    //= dynamic_cast<OsiClpSolverInterface *> (solver);
+    //assert (clpSolver);
+    // Move status to basis
+    //clpSolver->setWarmStart(NULL);
   }
   return 0.0;
 }
@@ -4891,7 +4967,7 @@ CbcGeneralBranchingObject::checkIsCutoff(double cutoff)
 void
 CbcGeneralBranchingObject::print()
 {
-  printf("CbcGeneralObject has %d subproblems\n",numberSubProblems_);
+  //printf("CbcGeneralObject has %d subproblems\n",numberSubProblems_);
 }
 // Fill in current objective etc
 void 
@@ -4933,13 +5009,126 @@ CbcGeneralBranchingObject::compareBranchingObject
 {
   throw("must implement");
 }
+
+// Default Constructor 
+CbcOneGeneralBranchingObject::CbcOneGeneralBranchingObject()
+  :CbcBranchingObject(),
+   object_(NULL),
+   whichOne_(-1)
+{
+  //printf("CbcOneGeneral %x default constructor\n",this);
+}
+
+// Useful constructor
+CbcOneGeneralBranchingObject::CbcOneGeneralBranchingObject (CbcModel * model,
+				 CbcGeneralBranchingObject * object,
+				 int whichOne)
+  :CbcBranchingObject(model,-1,-1,0.5),
+   object_(object),
+   whichOne_(whichOne)
+{
+  //printf("CbcOneGeneral %x useful constructor object %x %d left\n",this,
+  //	 object_,object_->numberSubLeft_);
+  numberBranches_=1;
+}
+
+// Copy constructor 
+CbcOneGeneralBranchingObject::CbcOneGeneralBranchingObject ( const CbcOneGeneralBranchingObject & rhs) 
+  :CbcBranchingObject(rhs),
+   object_(rhs.object_),
+   whichOne_(rhs.whichOne_)
+{
+}
+
+// Assignment operator 
+CbcOneGeneralBranchingObject & 
+CbcOneGeneralBranchingObject::operator=( const CbcOneGeneralBranchingObject& rhs)
+{
+  if (this != &rhs) {
+    CbcBranchingObject::operator=(rhs);
+    object_ = rhs.object_;
+    whichOne_ = rhs.whichOne_;
+  }
+  return *this;
+}
+CbcBranchingObject * 
+CbcOneGeneralBranchingObject::clone() const
+{ 
+  return (new CbcOneGeneralBranchingObject(*this));
+}
+
+
+// Destructor 
+CbcOneGeneralBranchingObject::~CbcOneGeneralBranchingObject ()
+{
+  //printf("CbcOneGeneral %x destructor object %x %d left\n",this,
+  // object_,object_->numberSubLeft_);
+  assert (object_->numberSubLeft_>0&&
+	  object_->numberSubLeft_<1000000);
+  if (!object_->decrementNumberLeft()) {
+    // printf("CbcGeneral %x yy destructor\n",object_);
+    delete object_;
+  }
+}
+double
+CbcOneGeneralBranchingObject::branch()
+{
+  assert (numberBranchesLeft());
+  decrementNumberBranchesLeft();
+  assert (!numberBranchesLeft());
+  object_->setWhichNode(whichOne_);
+  object_->branch();
+  return 0.0;
+}
+/* Double checks in case node can change its mind!
+   Can change objective etc */
+void 
+CbcOneGeneralBranchingObject::checkIsCutoff(double cutoff)
+{
+  assert (numberBranchesLeft());
+}
+// Print what would happen  
+void
+CbcOneGeneralBranchingObject::print()
+{
+  //printf("CbcOneGeneralObject has 1 subproblem\n");
+}
+/** Compare the original object of \c this with the original object of \c
+    brObj. Assumes that there is an ordering of the original objects.
+    This method should be invoked only if \c this and brObj are of the same
+    type. 
+    Return negative/0/positive depending on whether \c this is
+    smaller/same/larger than the argument.
+*/
+int
+CbcOneGeneralBranchingObject::compareOriginalObject
+(const CbcBranchingObject* brObj) const
+{
+  throw("must implement");
+}
+
+/** Compare the \c this with \c brObj. \c this and \c brObj must be os the
+    same type and must have the same original object, but they may have
+    different feasible regions.
+    Return the appropriate CbcRangeCompare value (first argument being the
+    sub/superset if that's the case). In case of overlap (and if \c
+    replaceIfOverlap is true) replace the current branching object with one
+    whose feasible region is the overlap.
+*/
+CbcRangeCompare
+CbcOneGeneralBranchingObject::compareBranchingObject
+(const CbcBranchingObject* brObj, const bool replaceIfOverlap)
+{
+  throw("must implement");
+}
 // Default Constructor 
 CbcSubProblem::CbcSubProblem()
   : objectiveValue_(0.0),
     sumInfeasibilities_(0.0),
     variables_(NULL),
     newBounds_(NULL),
-    statusDifference_(NULL),
+    status_(NULL),
+    depth_(0),
     numberChangedBounds_(0),
     numberInfeasibilities_(0)
 {
@@ -4949,12 +5138,14 @@ CbcSubProblem::CbcSubProblem()
 CbcSubProblem::CbcSubProblem (const OsiSolverInterface * solver,
 			      const double * lastLower,
 			      const double * lastUpper,
-			      const unsigned char * status)
+			      const unsigned char * status,
+			      int depth)
   : objectiveValue_(0.0),
     sumInfeasibilities_(0.0),
     variables_(NULL),
     newBounds_(NULL),
-    statusDifference_(NULL),
+    status_(NULL),
+    depth_(depth),
     numberChangedBounds_(0),
     numberInfeasibilities_(0)
 {
@@ -5004,7 +5195,10 @@ CbcSubProblem::CbcSubProblem (const OsiSolverInterface * solver,
     = dynamic_cast<const OsiClpSolverInterface *> (solver);
   assert (clpSolver);
   // Do difference
-  statusDifference_ = clpSolver->getBasisDiff(status);
+  // Current basis
+  status_ = clpSolver->getBasis(status);
+  assert (status_->fullBasis());
+  //status_->print();
 }
 
 // Copy constructor 
@@ -5013,7 +5207,8 @@ CbcSubProblem::CbcSubProblem ( const CbcSubProblem & rhs)
     sumInfeasibilities_(rhs.sumInfeasibilities_),
     variables_(NULL),
     newBounds_(NULL),
-    statusDifference_(NULL),
+    status_(NULL),
+    depth_(rhs.depth_),
     numberChangedBounds_(rhs.numberChangedBounds_),
     numberInfeasibilities_(rhs.numberInfeasibilities_)
 {
@@ -5021,8 +5216,8 @@ CbcSubProblem::CbcSubProblem ( const CbcSubProblem & rhs)
     variables_ = CoinCopyOfArray(rhs.variables_,numberChangedBounds_);
     newBounds_ = CoinCopyOfArray(rhs.newBounds_,numberChangedBounds_);
   }
-  if (rhs.statusDifference_) {
-    statusDifference_ = rhs.statusDifference_->clone();
+  if (rhs.status_) {
+    status_ = new CoinWarmStartBasis(*rhs.status_);
   }
 }
 
@@ -5033,9 +5228,10 @@ CbcSubProblem::operator=( const CbcSubProblem& rhs)
   if (this != &rhs) {
     delete [] variables_;
     delete [] newBounds_;
-    delete statusDifference_;
+    delete status_;
     objectiveValue_ = rhs.objectiveValue_;
     sumInfeasibilities_ = rhs.sumInfeasibilities_;
+    depth_ = rhs.depth_;
     numberChangedBounds_ = rhs.numberChangedBounds_;
     numberInfeasibilities_ = rhs.numberInfeasibilities_;
     if (numberChangedBounds_) {
@@ -5045,10 +5241,10 @@ CbcSubProblem::operator=( const CbcSubProblem& rhs)
       variables_ = NULL;
       newBounds_ = NULL;
     }
-    if (rhs.statusDifference_) {
-      statusDifference_ = rhs.statusDifference_->clone();
+    if (rhs.status_) {
+      status_ = new CoinWarmStartBasis(*rhs.status_);
     } else {
-      statusDifference_ = NULL;
+      status_ = NULL;
     }
   }
   return *this;
@@ -5059,56 +5255,100 @@ CbcSubProblem::~CbcSubProblem ()
 {
   delete [] variables_;
   delete [] newBounds_;
-  delete statusDifference_;
+  delete status_;
 }
 // Apply subproblem
 void 
-CbcSubProblem::apply(OsiSolverInterface * solver)
+CbcSubProblem::apply(OsiSolverInterface * solver, int what) const
 {
   int i;
-  for (i=0;i<numberChangedBounds_;i++) {
-    int variable = variables_[i];
-    int k = variable&0x3fffffff;
-    if ((variable&0x80000000)==0) {
-      // lower bound changing
-      //#define CBC_PRINT2
+  if ((what&1)!=0) {
+    int nSame=0;
+    for (i=0;i<numberChangedBounds_;i++) {
+      int variable = variables_[i];
+      int k = variable&0x3fffffff;
+      if ((variable&0x80000000)==0) {
+	// lower bound changing
+	//#define CBC_PRINT2
 #ifdef CBC_PRINT2
-      if(solver->getColLower()[k]!=newBounds_[i])
-	printf("lower change for column %d - from %g to %g\n",k,solver->getColLower()[k],newBounds_[i]);
+	if(solver->getColLower()[k]!=newBounds_[i])
+	  printf("lower change for column %d - from %g to %g\n",k,solver->getColLower()[k],newBounds_[i]);
 #endif
 #ifndef NDEBUG
-      if ((variable&0x40000000)==0&&true) {
-	double oldValue = solver->getColLower()[k];
-	assert (newBounds_[i]>oldValue-1.0e-8);
-	if (newBounds_[i]<oldValue+1.0e-8)
-	  printf("bad null lower change for column %d - bound %g\n",k,oldValue);
-      }
-#endif
-      solver->setColLower(k,newBounds_[i]);
-    } else {
-      // upper bound changing
+	if ((variable&0x40000000)==0&&true) {
+	  double oldValue = solver->getColLower()[k];
+	  assert (newBounds_[i]>oldValue-1.0e-8);
+	  if (newBounds_[i]<oldValue+1.0e-8) {
 #ifdef CBC_PRINT2
-      if(solver->getColUpper()[k]!=newBounds_[i])
-	printf("upper change for column %d - from %g to %g\n",k,solver->getColUpper()[k],newBounds_[i]);
+	    printf("bad null lower change for column %d - bound %g\n",k,oldValue);
+#endif
+	    if (newBounds_[i]==oldValue) 
+	      nSame++;
+	  }
+	}
+#endif
+	solver->setColLower(k,newBounds_[i]);
+      } else {
+	// upper bound changing
+#ifdef CBC_PRINT2
+	if(solver->getColUpper()[k]!=newBounds_[i])
+	  printf("upper change for column %d - from %g to %g\n",k,solver->getColUpper()[k],newBounds_[i]);
 #endif
 #ifndef NDEBUG
-      if ((variable&0x40000000)==0&&true) {
-	double oldValue = solver->getColUpper()[k];
-	assert (newBounds_[i]<oldValue+1.0e-8);
-	if (newBounds_[i]>oldValue-1.0e-8)
-	  printf("bad null upper change for column %d - bound %g\n",k,oldValue);
-      }
+	if ((variable&0x40000000)==0&&true) {
+	  double oldValue = solver->getColUpper()[k];
+	  assert (newBounds_[i]<oldValue+1.0e-8);
+	  if (newBounds_[i]>oldValue-1.0e-8) {
+#ifdef CBC_PRINT2
+	    printf("bad null upper change for column %d - bound %g\n",k,oldValue);
 #endif
-      solver->setColUpper(k,newBounds_[i]);
+	    if (newBounds_[i]==oldValue) 
+	      nSame++;
+	  }
+	}
+#endif
+	solver->setColUpper(k,newBounds_[i]);
+      }
     }
+    if (nSame&&(nSame<numberChangedBounds_||(what&3)!=3))
+      printf("%d changes out of %d redundant %d\n",
+	     nSame,numberChangedBounds_,what);
+    else if (numberChangedBounds_&&what==7&&!nSame)
+      printf("%d good changes %d\n",
+	     numberChangedBounds_,what);
   }
-  OsiClpSolverInterface * clpSolver 
-    = dynamic_cast<OsiClpSolverInterface *> (solver);
-  assert (clpSolver);
-  // Current basis
-  CoinWarmStartBasis * basis=clpSolver->getPointerToWarmStart();
-  basis->applyDiff(statusDifference_);
-  clpSolver->setBasis(*basis);
+#if 0
+  if ((what&2)!=0) {
+    OsiClpSolverInterface * clpSolver 
+      = dynamic_cast<OsiClpSolverInterface *> (solver);
+    assert (clpSolver);
+    //assert (clpSolver->getNumRows()==numberRows_);
+    //clpSolver->setBasis(*status_);
+    // Current basis
+    CoinWarmStartBasis * basis=clpSolver->getPointerToWarmStart();
+    printf("BBBB\n");
+    basis->print();
+    assert (basis->fullBasis());
+    basis->applyDiff(status_);
+    printf("diff applied %x\n",status_);
+    printf("CCCC\n");
+    basis->print();
+    assert (basis->fullBasis());
+#ifndef NDEBUG
+    if (!basis->fullBasis())
+      printf("Debug this basis!!\n");
+#endif
+    clpSolver->setBasis(*basis);
+  }
+#endif
+  if ((what&8)!=0) {
+    OsiClpSolverInterface * clpSolver 
+      = dynamic_cast<OsiClpSolverInterface *> (solver);
+    assert (clpSolver);
+    clpSolver->setBasis(*status_);
+    delete status_;
+    status_=NULL;
+  }
 }
 #endif
 
