@@ -57,8 +57,7 @@ bin_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2)
 # Add locations of include files.
 @COIN_HAS_CLP_TRUE@am__append_2 = -I`$(CYGPATH_W) $(CLPSRCDIR)/src` \
 @COIN_HAS_CLP_TRUE@	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiClp` \
-@COIN_HAS_CLP_TRUE@	-I`$(CYGPATH_W) $(CLPOBJDIR)/inc` \
-@COIN_HAS_CLP_TRUE@        -I`$(CYGPATH_W) $(CGLOBJDIR)/inc`	
+@COIN_HAS_CLP_TRUE@	-I`$(CYGPATH_W) $(CLPOBJDIR)/inc`
 
 @COIN_HAS_CLP_TRUE@am__append_3 = `cat $(CLPOBJDIR)/clp_addlibs.txt`
 @COIN_HAS_CLP_TRUE@@COIN_HAS_CPX_TRUE@am__append_4 = -I`$(CYGPATH_W) $(CPXINCDIR)` \
@@ -171,10 +170,9 @@ am_libCbc_la_OBJECTS = Cbc_C_Interface.lo CbcBranchActual.lo \
 	CbcHeuristicDiveLineSearch.lo CbcHeuristicDivePseudoCost.lo \
 	CbcHeuristicDiveVectorLength.lo CbcHeuristicFPump.lo \
 	CbcHeuristicGreedy.lo CbcHeuristicLocal.lo \
-	CbcHeuristicPivotAndFix.lo CbcHeuristicPivotAndComplement.lo \
-	CbcHeuristicRandRound.lo CbcHeuristicRINS.lo CbcMessage.lo \
-	CbcModel.lo CbcNode.lo CbcStatistics.lo CbcStrategy.lo \
-	CbcTree.lo CbcTreeLocal.lo
+	CbcHeuristicPivotAndFix.lo CbcHeuristicRandRound.lo \
+	CbcHeuristicRINS.lo CbcMessage.lo CbcModel.lo CbcNode.lo \
+	CbcStatistics.lo CbcStrategy.lo CbcTree.lo CbcTreeLocal.lo
 libCbc_la_OBJECTS = $(am_libCbc_la_OBJECTS)
 libCbcSolver_la_LIBADD =
 am_libCbcSolver_la_OBJECTS = CbcCbcParam.lo Cbc_ampl.lo \
@@ -533,7 +531,6 @@ libCbc_la_SOURCES = \
 	CbcHeuristicGreedy.cpp CbcHeuristicGreedy.hpp \
 	CbcHeuristicLocal.cpp CbcHeuristicLocal.hpp \
 	CbcHeuristicPivotAndFix.cpp CbcHeuristicPivotAndFix.hpp \
-	CbcHeuristicPivotAndComplement.cpp CbcHeuristicPivotAndComplement.hpp \
 	CbcHeuristicRandRound.cpp CbcHeuristicRandRound.hpp \
 	CbcHeuristicRINS.cpp CbcHeuristicRINS.hpp \
 	CbcMessage.cpp CbcMessage.hpp \
@@ -681,7 +678,6 @@ includecoin_HEADERS = \
 	CbcHeuristicGreedy.hpp \
 	CbcHeuristicLocal.hpp \
 	CbcHeuristicPivotAndFix.hpp \
-	CbcHeuristicPivotAndComplement.hpp \
 	CbcHeuristicRandRound.hpp \
 	CbcHeuristicRINS.hpp \
 	CbcMessage.hpp \
@@ -842,7 +838,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CbcHeuristicFPump.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CbcHeuristicGreedy.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CbcHeuristicLocal.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CbcHeuristicPivotAndComplement.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CbcHeuristicPivotAndFix.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CbcHeuristicRINS.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CbcHeuristicRandRound.Plo@am__quote@

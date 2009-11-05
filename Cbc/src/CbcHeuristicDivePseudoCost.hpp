@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: CbcHeuristicDivePseudoCost.hpp 1240 2009-10-02 18:41:44Z forrest $ */
 // Copyright (C) 2008, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #ifndef CbcHeuristicDivePseudoCost_H

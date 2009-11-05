@@ -1,6 +1,6 @@
 // Copyright (C) 2007, International Business Machines
 // Corporation and others.  All Rights Reserved.
-/* $Id$ */
+/* $Id: ClpAmplStuff.cpp 1200 2009-07-25 08:44:13Z forrest $ */
 
 #include "ClpConfig.h"
 #include "CbcConfig.h"

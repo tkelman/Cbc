@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: CbcSolver.cpp 1266 2009-11-02 14:07:49Z forrest $ */
 // Copyright (C) 2007, International Business Machines
 // Corporation and others.  All Rights Reserved.
    
@@ -42,7 +42,7 @@
 #include "OsiAuxInfo.hpp"
 // Version
 #ifndef CBCVERSION
-#define CBCVERSION "2.31.00"
+#define CBCVERSION "2.3.1"
 #endif
 //#define ORBITAL
 #ifdef ORBITAL
@@ -165,7 +165,7 @@ static int initialPumpTune=-1;
 #include "CbcHeuristic.hpp"
 #include "CbcHeuristicLocal.hpp"
 #include "CbcHeuristicPivotAndFix.hpp"
-#include "CbcHeuristicPivotAndComplement.hpp"
+//#include "CbcHeuristicPivotAndComplement.hpp"
 #include "CbcHeuristicRandRound.hpp"
 #include "CbcHeuristicGreedy.hpp"
 #include "CbcHeuristicFPump.hpp"
@@ -3297,7 +3297,7 @@ int
   int useGreedy = parameters_[whichParam(GREEDY,numberParameters_,parameters_)].currentOptionAsInteger();
   int useCombine = parameters_[whichParam(COMBINE,numberParameters_,parameters_)].currentOptionAsInteger();
   int useCrossover = parameters_[whichParam(CROSSOVER2,numberParameters_,parameters_)].currentOptionAsInteger();
-  int usePivotC = parameters_[whichParam(PIVOTANDCOMPLEMENT,numberParameters_,parameters_)].currentOptionAsInteger();
+  //int usePivotC = parameters_[whichParam(PIVOTANDCOMPLEMENT,numberParameters_,parameters_)].currentOptionAsInteger();
   int usePivotF = parameters_[whichParam(PIVOTANDFIX,numberParameters_,parameters_)].currentOptionAsInteger();
   int useRand = parameters_[whichParam(RANDROUND,numberParameters_,parameters_)].currentOptionAsInteger();
   int useRINS = parameters_[whichParam(RINS,numberParameters_,parameters_)].currentOptionAsInteger();
@@ -3621,6 +3621,7 @@ int
     }
     anyToDo=true;
   }
+#if 0
   if (usePivotC>=type&&usePivotC<=kType+1) {
     CbcHeuristicPivotAndComplement heuristic(*model);
     heuristic.setHeuristicName("pivot and complement");
@@ -3628,6 +3629,7 @@ int
     model->addHeuristic(&heuristic);
     anyToDo=true;
   }
+#endif
   if (usePivotF>=type&&usePivotF<=kType+1) {
     CbcHeuristicPivotAndFix heuristic(*model);
     heuristic.setHeuristicName("pivot and fix");
@@ -3667,7 +3669,7 @@ int
     model->addHeuristic(&heuristic5) ;
     anyToDo=true;
   }
-  if (useCombine>=type&&useCombine>=kType&&useCombine<=kType+1) {
+  if (useCombine>=kType&&useCombine<=kType+1) {
     CbcHeuristicLocal heuristic2(*model);
     heuristic2.setHeuristicName("combine solutions");
     heuristic2.setFractionSmall(0.5);
@@ -5392,11 +5394,13 @@ int
 		int iStatus2 = model2->secondaryStatus();
 		if (iStatus==0) {
 		  iStatus2=0;
-		  // set best solution in model
-		  model_.setBestSolution(model2->primalColumnSolution(),
-					 model2->numberColumns(),
-					 model2->getObjValue()*
-					 model2->getObjSense());
+		  if(found.type()==BAB) {
+		    // set best solution in model as no integers
+		    model_.setBestSolution(model2->primalColumnSolution(),
+					   model2->numberColumns(),
+					   model2->getObjValue()*
+					   model2->getObjSense());
+		  }
 		} else if (iStatus==1) {
 		  iStatus=0;
 		  iStatus2=1; // say infeasible

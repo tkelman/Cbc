@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: CbcHeuristicRINS.hpp 1261 2009-10-30 12:45:20Z forrest $ */
 // Copyright (C) 2006, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #ifndef CbcHeuristicRINS_H

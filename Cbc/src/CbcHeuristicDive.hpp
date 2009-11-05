@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: CbcHeuristicDive.hpp 1252 2009-10-20 09:22:24Z stefan $ */
 // Copyright (C) 2008, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #ifndef CbcHeuristicDive_H

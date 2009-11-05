@@ -45,7 +45,6 @@ libCbc_la_SOURCES = \
 	CbcHeuristicGreedy.cpp CbcHeuristicGreedy.hpp \
 	CbcHeuristicLocal.cpp CbcHeuristicLocal.hpp \
 	CbcHeuristicPivotAndFix.cpp CbcHeuristicPivotAndFix.hpp \
-	CbcHeuristicPivotAndComplement.cpp CbcHeuristicPivotAndComplement.hpp \
 	CbcHeuristicRandRound.cpp CbcHeuristicRandRound.hpp \
 	CbcHeuristicRINS.cpp CbcHeuristicRINS.hpp \
 	CbcMessage.cpp CbcMessage.hpp \
@@ -118,8 +117,7 @@ cbc_LDFLAGS = -rpath $(libdir)
 
 AM_CPPFLAGS += -I`$(CYGPATH_W) $(CLPSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiClp` \
-	-I`$(CYGPATH_W) $(CLPOBJDIR)/inc` \
-        -I`$(CYGPATH_W) $(CGLOBJDIR)/inc`	
+	-I`$(CYGPATH_W) $(CLPOBJDIR)/inc`
 LIBS  += `cat $(CLPOBJDIR)/clp_addlibs.txt`
 
 if COIN_HAS_CPX
@@ -331,7 +329,6 @@ includecoin_HEADERS = \
 	CbcHeuristicGreedy.hpp \
 	CbcHeuristicLocal.hpp \
 	CbcHeuristicPivotAndFix.hpp \
-	CbcHeuristicPivotAndComplement.hpp \
 	CbcHeuristicRandRound.hpp \
 	CbcHeuristicRINS.hpp \
 	CbcMessage.hpp \

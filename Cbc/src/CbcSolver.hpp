@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: CbcSolver.hpp 1212 2009-08-21 16:19:13Z forrest $ */
 // Copyright (C) 2007, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #ifndef CbcSolver_H

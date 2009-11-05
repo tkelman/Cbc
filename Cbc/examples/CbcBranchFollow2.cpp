@@ -1,4 +1,3 @@
-/* $Id$ */
 // Copyright (C) 2004, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #if defined(_MSC_VER)
@@ -300,8 +299,7 @@ CbcFollowOn2::gutsOfFollowOn2(int & otherRow, int & preferredWay,
 
 // Infeasibility - large is 0.5
 double 
-CbcFollowOn2::infeasibility(const OsiBranchingInformation * info,
-			    int & preferredWay) const
+CbcFollowOn2::infeasibility(int & preferredWay) const
 {
   int otherRow=0;
   int effectiveRhs;
@@ -323,7 +321,7 @@ CbcFollowOn2::feasibleRegion()
 
 // Creates a branching object
 CbcBranchingObject * 
-CbcFollowOn2::createCbcBranch(OsiSolverInterface * solver,const OsiBranchingInformation * info,int way) 
+CbcFollowOn2::createBranch(int way) 
 {
   int otherRow=0;
   int preferredWay;
@@ -343,7 +341,7 @@ CbcFollowOn2::createCbcBranch(OsiSolverInterface * solver,const OsiBranchingInfo
   const int * column = matrixByRow_.getIndices();
   const CoinBigIndex * rowStart = matrixByRow_.getVectorStarts();
   const int * rowLength = matrixByRow_.getVectorLengths();
-  //OsiSolverInterface * solver = model_->solver();
+  OsiSolverInterface * solver = model_->solver();
   const double * columnLower = solver->getColLower();
   const double * columnUpper = solver->getColUpper();
   //const double * solution = solver->getColSolution();

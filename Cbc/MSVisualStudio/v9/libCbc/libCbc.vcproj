@@ -753,10 +753,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\CbcHeuristicPivotAndComplement.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\..\..\src\CbcHeuristicRandRound.cpp"
 				>
 			</File>
@@ -1018,10 +1014,6 @@
 				RelativePath="..\..\..\src\ClpAmplStuff.cpp"
 				>
 			</File>
-			<File
-				RelativePath="..\..\..\src\unitTestClp.cpp"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -1140,10 +1132,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\CbcHeuristicPivotAndComplement.hpp"
-				>
-			</File>
-			<File
 				RelativePath="..\..\..\src\CbcHeuristicRandRound.hpp"
 				>
 			</File>
@@ -1212,10 +1200,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglLandP.hpp"
-				>
-			</File>
-			<File
 				RelativePath="..\..\..\..\Cgl\src\CglMixedIntegerRounding\CglMixedIntegerRounding.hpp"
 				>
 			</File>
@@ -1236,11 +1220,15 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\..\Cgl\src\CglTwomir\CglTwomir.hpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglResidualCapacity.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglTwomir\CglTwomir.hpp"
+				RelativePath="..\..\..\..\Cgl\src\CglLandP.hpp"
 				>
 			</File>
 			<File

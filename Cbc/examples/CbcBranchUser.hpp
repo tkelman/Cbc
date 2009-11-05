@@ -1,4 +1,3 @@
-/* $Id$ */
 // Copyright (C) 2002, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #ifndef CbcBranchUser_H
@@ -85,8 +84,7 @@ public:
   ~CbcSimpleIntegerFixed ();
   
   /// Infeasibility - large is 0.5
-  virtual double infeasibility(const OsiBranchingInformation * info,
-			       int & preferredWay) const;
+  virtual double infeasibility(int & preferredWay) const;
 
   /** Creates a branching object
 
@@ -98,7 +96,7 @@ public:
       The branching object has to know how to create branches (fix
       variables, etc.)
   */
-  virtual CbcBranchingObject * createCbcBranch(OsiSolverInterface * solver,
+  virtual CbcBranchingObject * createBranch(OsiSolverInterface * solver,
 					    const OsiBranchingInformation * info, int way) ;
 
 protected:

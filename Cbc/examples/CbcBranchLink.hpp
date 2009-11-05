@@ -1,4 +1,3 @@
-/* $Id$ */
 // Copyright (C) 2005, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #ifndef CbcBranchLink_H
@@ -50,13 +49,12 @@ public:
   ~CbcLink ();
   
   /// Infeasibility - large is 0.5
-  virtual double infeasibility(const OsiBranchingInformation * info,
-int & preferredWay) const;
+  virtual double infeasibility(int & preferredWay) const;
 
   /// This looks at solution and sets bounds to contain solution
   virtual void feasibleRegion();
   /// Creates a branching object
-  virtual CbcBranchingObject * createCbcBranch(OsiSolverInterface * solver,const OsiBranchingInformation * info,int way) ;
+  virtual CbcBranchingObject * createBranch(int way) ;
 
   /// Number of members
   inline int numberMembers() const
