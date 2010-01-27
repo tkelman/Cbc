@@ -17,7 +17,7 @@
 */
 
 /*
-  $Id$
+  $Id: CbcGenMessages.hpp 1173 2009-06-04 09:44:10Z forrest $
 */
 
 /*
@@ -31,9 +31,10 @@
 */
 
 typedef enum {
-  CBCGEN_TEST_MSG = 1,
-  CBCGEN_NEW_SOLVER,
-  CBCGEN_CONFUSION,
-  CBCGEN_DUMMY_END } CbcGenMsgCode ;
+    CBCGEN_TEST_MSG = 1,
+    CBCGEN_NEW_SOLVER,
+    CBCGEN_CONFUSION,
+    CBCGEN_DUMMY_END
+} CbcGenMsgCode ;
 
 #endif

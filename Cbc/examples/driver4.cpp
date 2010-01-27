@@ -1,4 +1,3 @@
-/* $Id$ */
 // Copyright (C) 2007, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #if defined(_MSC_VER)
@@ -218,8 +217,17 @@ int main (int argc, const char *argv[])
   /* Two ways of doing this depending on whether NEW_STYLE_SOLVER defined.
      So we need pointer to model.  Old way could use modelA. rather than model->
    */
+  // Messy code below copied from CbcSolver.cpp
+#ifdef CLP_FAST_CODE
+// force new style solver
+#ifndef NEW_STYLE_SOLVER
+#define NEW_STYLE_SOLVER 1
+#endif
+#else
+// Not new style solver
 #ifndef NEW_STYLE_SOLVER
 #define NEW_STYLE_SOLVER 0
+#endif
 #endif
 #if NEW_STYLE_SOLVER==0
   // Pass to Cbc initialize defaults 

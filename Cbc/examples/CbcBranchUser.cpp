@@ -1,4 +1,3 @@
-/* $Id$ */
 // Copyright (C) 2002, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #if defined(_MSC_VER)
@@ -378,8 +377,7 @@ CbcSimpleIntegerFixed::~CbcSimpleIntegerFixed ()
 
 // Infeasibility - large is 0.5
 double 
-CbcSimpleIntegerFixed::infeasibility(const OsiBranchingInformation * info,
-				     int & preferredWay) const
+CbcSimpleIntegerFixed::infeasibility(int & preferredWay) const
 {
   OsiSolverInterface * solver = model_->solver();
   const double * solution = model_->testSolution();
@@ -417,8 +415,8 @@ CbcSimpleIntegerFixed::infeasibility(const OsiBranchingInformation * info,
 }
 // Creates a branching object
 CbcBranchingObject * 
-CbcSimpleIntegerFixed::createCbcBranch(OsiSolverInterface * solver,const OsiBranchingInformation * info,
-					     int way)  
+CbcSimpleIntegerFixed::createBranch(OsiSolverInterface * solver,
+					    const OsiBranchingInformation * info, int way)  
 {
   const double * solution = model_->testSolution();
   const double * lower = solver->getColLower();

@@ -1,4 +1,3 @@
-/* $Id$ */
 // Copyright (C) 2005, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #if defined(_MSC_VER)
@@ -150,8 +149,7 @@ CbcLink::~CbcLink ()
 
 // Infeasibility - large is 0.5
 double 
-CbcLink::infeasibility(const OsiBranchingInformation * info,
-		       int & preferredWay) const
+CbcLink::infeasibility(int & preferredWay) const
 {
   int j;
   int firstNonZero=-1;
@@ -465,13 +463,13 @@ CbcLink::feasibleRegion()
 
 // Creates a branching object
 CbcBranchingObject * 
-CbcLink::createCbcBranch(OsiSolverInterface * solver,const OsiBranchingInformation * info,int way) 
+CbcLink::createBranch(int way) 
 {
   int j;
   const double * solution = model_->testSolution();
   double integerTolerance = 
       model_->getDblParam(CbcModel::CbcIntegerTolerance);
-  //OsiSolverInterface * solver = model_->solver();
+  OsiSolverInterface * solver = model_->solver();
   const double * upper = solver->getColUpper();
   int firstNonFixed=-1;
   int lastNonFixed=-1;

@@ -1,4 +1,3 @@
-/* $Id$ */
 // Copyright (C) 2004, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #ifndef CbcBranchFollowOn2_H
@@ -45,13 +44,12 @@ public:
   ~CbcFollowOn2 ();
   
   /// Infeasibility - large is 0.5
-  virtual double infeasibility(const OsiBranchingInformation * info,
-			       int & preferredWay) const;
+  virtual double infeasibility(int & preferredWay) const;
 
   /// This looks at solution and sets bounds to contain solution
   virtual void feasibleRegion();
   /// Creates a branching object
-  virtual CbcBranchingObject * createCbcBranch(OsiSolverInterface * solver,const OsiBranchingInformation * info,int way) ;
+  virtual CbcBranchingObject * createBranch(int way) ;
   /** As some computation is needed in more than one place - returns row.
       Also returns other row and effective rhs (so we can know if cut)
   */
