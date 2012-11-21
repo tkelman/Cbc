@@ -100,6 +100,7 @@ libCbcSolver_la_SOURCES = \
 	unitTestClp.cpp CbcSolver.cpp \
 	CbcSolverHeuristics.cpp CbcSolverHeuristics.hpp \
 	CbcSolverAnalyze.cpp CbcSolverAnalyze.hpp \
+	CbcMipStartIO.cpp CbcMipStartIO.hpp \
 	CbcSolverExpandKnapsack.cpp CbcSolverExpandKnapsack.hpp
 
 # This is for libtool
@@ -247,6 +248,7 @@ includecoin_HEADERS = \
 	CbcSimpleIntegerPseudoCost.hpp \
 	CbcStrategy.hpp \
 	CbcSolver.hpp \
+	CbcMipStartIO.hpp \
 	CbcSOS.hpp \
 	CbcSubProblem.hpp \
 	CbcTree.hpp \
@@ -254,6 +256,10 @@ includecoin_HEADERS = \
 	CbcTreeLocal.hpp \
 	ClpConstraintAmpl.hpp \
 	ClpAmplObjective.hpp 
+
+#######################################################################
+# Create the Config.h file that has all public defines and install it #
+#######################################################################
 
 install-exec-local:
 	$(install_sh_DATA) config_cbc.h $(DESTDIR)$(includecoindir)/CbcConfig.h

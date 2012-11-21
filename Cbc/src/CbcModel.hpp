@@ -438,6 +438,10 @@ public:
       Save copy of the model.
     */
     void saveModel(OsiSolverInterface * saveSolver, double * checkCutoffForRestart, bool * feasible);
+    /**
+      Flip direction of optimization on all models
+    */
+    void flipModel();
 
     //@}
 
@@ -704,6 +708,8 @@ public:
     inline double getCutoffIncrement() const {
         return getDblParam(CbcCutoffIncrement);
     }
+    /// See if can stop on gap
+    bool canStopOnGap() const;
 
     /** Pass in target solution and optional priorities.
         If priorities then >0 means only branch if incorrect
@@ -892,13 +898,17 @@ public:
     inline void incrementIterationCount(int value) {
         numberIterations_ += value;
     }
-    /// Get how many Nodes it took to solve the problem.
+    /// Get how many Nodes it took to solve the problem (including those in complete fathoming B&B inside CLP).
     inline int getNodeCount() const {
         return numberNodes_;
     }
     /// Increment how many nodes it took to solve the problem.
     inline void incrementNodeCount(int value) {
         numberNodes_ += value;
+    }
+    /// Get how many Nodes were enumerated in complete fathoming B&B inside CLP
+    inline int getExtraNodeCount() const {
+       return numberExtraNodes_;
     }
     /** Final status of problem
         Some of these can be found out by is...... functions
@@ -925,6 +935,7 @@ public:
         5 stopped on user event
         6 stopped on solutions
         7 linear relaxation unbounded
+        8 stopped on iteration limit
     */
     inline int secondaryStatus() const {
         return secondaryStatus_;
@@ -1171,8 +1182,9 @@ public:
         If fixVariables true then bounds of continuous solver updated.
         Returns objective value (worse than cutoff if not feasible)
         Previously computed objective value is now passed in (in case user does not do solve)
+	virtual so user can override
     */
-    double checkSolution(double cutoff, double * solution,
+    virtual double checkSolution(double cutoff, double * solution,
                          int fixVariables, double originalObjValue);
     /** Test the current solution for feasiblility.
 
@@ -1299,6 +1311,8 @@ public:
     const double * savedSolution(int which) const;
     /// Return a saved solution objective (0==best) - COIN_DBL_MAX if off end
     double savedSolutionObjective(int which) const;
+    /// Delete a saved solution and move others up
+    void deleteSavedSolution(int which);
 
     /** Current phase (so heuristics etc etc can find out).
         0 - initial solve
@@ -1574,6 +1588,10 @@ public:
     inline int numberHeuristics() const {
         return numberHeuristics_;
     }
+    /// Set the number of heuristics
+    inline void setNumberHeuristics(int value) {
+        numberHeuristics_ = value;
+    }
     /// Pointer to heuristic solver which found last solution (or NULL)
     inline CbcHeuristic * lastHeuristic() const {
         return lastHeuristic_;
@@ -1717,6 +1735,8 @@ public:
         17 bit (131072) - Perturbation switched off
         18 bit (262144) - donor CbcModel
         19 bit (524288) - recipient CbcModel
+        20 bit (1048576) - waiting for sub model to return
+	22 bit (4194304) - do not initialize random seed in solver (user has)
     */
     inline void setSpecialOptions(int value) {
         specialOptions_ = value;
@@ -1725,9 +1745,19 @@ public:
     inline int specialOptions() const {
         return specialOptions_;
     }
+    /// Tell model to stop on event
+    inline void sayEventHappened()
+    { eventHappened_=true;}
     /// Says if normal solver i.e. has well defined CoinPackedMatrix
     inline bool normalSolver() const {
         return (specialOptions_&16) == 0;
+    }
+    /** Says if model is sitting there waiting for mini branch and bound to finish
+	This is because an event handler may only have access to parent model in
+	mini branch and bound
+    */
+    inline bool waitingForMiniBranchAndBound() const {
+        return (specialOptions_&1048576) != 0;
     }
     /** Set more special options
         at present bottom 6 bits used for shadow price mode
@@ -1825,7 +1855,7 @@ public:
     CbcModel & operator=(const CbcModel& rhs);
 
     /// Destructor
-    ~CbcModel ();
+    virtual ~CbcModel ();
 
     /// Returns solver - has current state
     inline OsiSolverInterface * solver() const {
@@ -1887,8 +1917,10 @@ public:
     void moveInfo(const CbcModel & rhs);
     //@}
 
-    /// To do with threads
+    ///@name Multithreading
     //@{
+    /// Indicates whether Cbc library has been compiled with multithreading support
+    static bool haveMultiThreadSupport();
     /// Get pointer to masterthread
     CbcThread * masterThread() const {
         return masterThread_;
@@ -1983,7 +2015,7 @@ public:
                      int numberNodes);
     //@}
 
-    /// semi-private i.e. users should not use
+    ///@name semi-private i.e. users should not use
     //@{
     /// Get how many Nodes it took to solve the problem.
     int getNodeCount2() const {

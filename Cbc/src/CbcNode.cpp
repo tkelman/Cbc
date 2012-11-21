@@ -2291,7 +2291,8 @@ int CbcNode::chooseDynamicBranch (CbcModel *model, CbcNode *lastNode,
                                 rowActivity[iRow] = COIN_DBL_MAX;
                             }
                         } else if (columnLower[i] < columnUpper[i]) {
-                            if (solution[i] != saveSolution[i]) {
+			    if (fabs(solution[i] - saveSolution[i]) > 
+				integerTolerance) {
                                 nFreeNon++;
                                 if (fabs(solution[i] - saveSolution[i]) > mostAway) {
                                     mostAway = fabs(solution[i] - saveSolution[i]);
@@ -2872,7 +2873,7 @@ int CbcNode::chooseDynamicBranch (CbcModel *model, CbcNode *lastNode,
                             if (iColumn < numberColumns && cutoff < 1.0e20
                                     && objectiveChange > 1.0e-5) {
                                 double value = saveSolution[iColumn];
-                                double down = value - floor(value);
+                                double down = value - floor(value-integerTolerance);
                                 double changePer = objectiveChange / (down + 1.0e-7);
                                 double distance = (cutoff - objectiveValue_) / changePer;
                                 distance += 1.0e-3;
@@ -3018,7 +3019,7 @@ int CbcNode::chooseDynamicBranch (CbcModel *model, CbcNode *lastNode,
                             if (iColumn < numberColumns && cutoff < 1.0e20
                                     && objectiveChange > 1.0e-5) {
                                 double value = saveSolution[iColumn];
-                                double up = ceil(value) - value;
+                                double up = ceil(value+integerTolerance) - value;
                                 double changePer = objectiveChange / (up + 1.0e-7);
                                 double distance = (cutoff - objectiveValue_) / changePer;
                                 distance += 1.0e-3;
@@ -3258,9 +3259,10 @@ int CbcNode::chooseDynamicBranch (CbcModel *model, CbcNode *lastNode,
                         model->resolve(NULL, 11, saveSolution, saveLower, saveUpper);
                         double newObjValue = solver->getObjSense()*solver->getObjValue();
                         objectiveValue_ = CoinMax(objectiveValue_,newObjValue);
+                        bool goneInfeasible = (!solver->isProvenOptimal()||solver->isDualObjectiveLimitReached());
                         solver->markHotStart();
                         // may be infeasible (if other way stopped on iterations)
-                        if (!solver->isProvenOptimal()||solver->isDualObjectiveLimitReached()) {
+                        if (goneInfeasible) {
                             // neither side feasible
                             anyAction = -2;
                             if (!choiceObject) {
@@ -3300,9 +3302,10 @@ int CbcNode::chooseDynamicBranch (CbcModel *model, CbcNode *lastNode,
                         model->resolve(NULL, 11, saveSolution, saveLower, saveUpper);
                         double newObjValue = solver->getObjSense()*solver->getObjValue();
                         objectiveValue_ = CoinMax(objectiveValue_,newObjValue);
+                        bool goneInfeasible = (!solver->isProvenOptimal()||solver->isDualObjectiveLimitReached());
                         solver->markHotStart();
                         // may be infeasible (if other way stopped on iterations)
-                        if (!solver->isProvenOptimal()||solver->isDualObjectiveLimitReached()) {
+                        if (goneInfeasible) {
                             // neither side feasible
                             anyAction = -2;
                             if (!choiceObject) {
