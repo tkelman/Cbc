@@ -1,4 +1,4 @@
-/* $Id: CbcSolver.cpp 1240 2009-10-02 18:41:44Z forrest $ */
+/* $Id$ */
 // Copyright (C) 2007, International Business Machines
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
@@ -185,10 +185,7 @@ static int initialPumpTune = -1;
 #include "CglStored.hpp"
 #include "CglLandP.hpp"
 #include "CglResidualCapacity.hpp"
-
-#ifdef ZERO_HALF_CUTS
 #include "CglZeroHalf.hpp"
-#endif
 //#define CGL_WRITEMPS 
 #ifdef CGL_WRITEMPS
 extern double * debugSolution;
@@ -644,9 +641,7 @@ void CbcSolver::fillParameters()
     parameters_[whichParam(CBC_PARAM_STR_GOMORYCUTS, numberParameters_, parameters_)].setCurrentOption("ifmove");
     parameters_[whichParam(CBC_PARAM_STR_PROBINGCUTS, numberParameters_, parameters_)].setCurrentOption("ifmove");
     parameters_[whichParam(CBC_PARAM_STR_KNAPSACKCUTS, numberParameters_, parameters_)].setCurrentOption("ifmove");
-#ifdef ZERO_HALF_CUTS
     parameters_[whichParam(CBC_PARAM_STR_ZEROHALFCUTS, numberParameters_, parameters_)].setCurrentOption("off");
-#endif
     parameters_[whichParam(CBC_PARAM_STR_REDSPLITCUTS, numberParameters_, parameters_)].setCurrentOption("off");
     parameters_[whichParam(CBC_PARAM_STR_CLIQUECUTS, numberParameters_, parameters_)].setCurrentOption("ifmove");
     parameters_[whichParam(CBC_PARAM_STR_MIXEDCUTS, numberParameters_, parameters_)].setCurrentOption("ifmove");
@@ -826,9 +821,12 @@ void fakeMain2 (ClpSimplex & model, OsiClpSolverInterface & osiSolver, int optio
 static CbcModel * currentBranchModel = NULL;
 
 extern "C" {
-    static void signal_handler(int /*whichSignal*/) {
-        if (currentBranchModel != NULL)
-            currentBranchModel->sayEventHappened(); // say why stopped
+    static void signal_handler(int whichSignal) {
+      if (currentBranchModel != NULL) {
+	currentBranchModel->sayEventHappened(); // say why stopped
+	if (currentBranchModel->heuristicModel())
+	  currentBranchModel->heuristicModel()->sayEventHappened();
+      }
         return;
     }
 }
@@ -1594,6 +1592,7 @@ int CbcMain1 (int argc, const char *argv[],
         CglMixedIntegerRounding2 mixedGen(1, true, 1);
         // set default action (0=off,1=on,2=root)
         int mixedAction = 3;
+	mixedGen.setDoPreproc(1); // safer (and better)
 
         CglFlowCover flowGen;
         // set default action (0=off,1=on,2=root)
@@ -1609,15 +1608,14 @@ int CbcMain1 (int argc, const char *argv[],
         // set default action (0=off,1=on,2=root)
         int landpAction = 0;
         CglResidualCapacity residualCapacityGen;
+        residualCapacityGen.setDoPreproc(1); // always preprocess
         // set default action (0=off,1=on,2=root)
         int residualCapacityAction = 0;
 
-#ifdef ZERO_HALF_CUTS
         CglZeroHalf zerohalfGen;
         //zerohalfGen.switchOnExpensive();
         // set default action (0=off,1=on,2=root)
         int zerohalfAction = 0;
-#endif
 
         // Stored cuts
         //bool storedCuts = false;
@@ -2355,12 +2353,10 @@ int CbcMain1 (int argc, const char *argv[],
                             defaultSettings = false; // user knows what she is doing
                             residualCapacityAction = action;
                             break;
-#ifdef ZERO_HALF_CUTS
                         case CBC_PARAM_STR_ZEROHALFCUTS:
                             defaultSettings = false; // user knows what she is doing
                             zerohalfAction = action;
                             break;
-#endif
                         case CBC_PARAM_STR_ROUNDING:
                             defaultSettings = false; // user knows what she is doing
                             break;
@@ -2377,9 +2373,7 @@ int CbcMain1 (int argc, const char *argv[],
                             gomoryAction = action;
                             probingAction = action;
                             knapsackAction = action;
-#ifdef ZERO_HALF_CUTS
                             zerohalfAction = action;
-#endif
                             cliqueAction = action;
                             flowAction = action;
                             mixedAction = action;
@@ -2392,9 +2386,7 @@ int CbcMain1 (int argc, const char *argv[],
                             parameters_[whichParam(CBC_PARAM_STR_FLOWCUTS, numberParameters_, parameters_)].setCurrentOption(action);
                             parameters_[whichParam(CBC_PARAM_STR_MIXEDCUTS, numberParameters_, parameters_)].setCurrentOption(action);
                             parameters_[whichParam(CBC_PARAM_STR_TWOMIRCUTS, numberParameters_, parameters_)].setCurrentOption(action);
-#ifdef ZERO_HALF_CUTS
                             parameters_[whichParam(CBC_PARAM_STR_ZEROHALFCUTS, numberParameters_, parameters_)].setCurrentOption(action);
-#endif
                             if (!action) {
                                 redsplitAction = action;
                                 parameters_[whichParam(CBC_PARAM_STR_REDSPLITCUTS, numberParameters_, parameters_)].setCurrentOption(action);
@@ -4244,7 +4236,6 @@ int CbcMain1 (int argc, const char *argv[],
                                 accuracyFlag[numberGenerators] = 5;
                                 switches[numberGenerators++] = 1;
                             }
-#ifdef ZERO_HALF_CUTS
                             if (zerohalfAction) {
                                 if (zerohalfAction > 4) {
                                     //zerohalfAction -=4;
@@ -4254,7 +4245,6 @@ int CbcMain1 (int argc, const char *argv[],
                                 accuracyFlag[numberGenerators] = 5;
                                 switches[numberGenerators++] = 2;
                             }
-#endif
                             if (dominatedCuts)
                                 babModel_->setSpecialOptions(babModel_->specialOptions() | 64);
                             // Say we want timings
@@ -4271,10 +4261,10 @@ int CbcMain1 (int argc, const char *argv[],
                                 //if (switches[iGenerator]==-2)
                                 //generator->setWhetherToUse(true);
                                 generator->setInaccuracy(accuracyFlag[iGenerator]);
-				if (doAtEnd[iGenerator]) {
-				  generator->setWhetherCallAtEnd(true);
-				  generator->setMustCallAgain(true);
-				}
+                                if (doAtEnd[iGenerator]) {
+                                    generator->setWhetherCallAtEnd(true);
+                                    generator->setMustCallAgain(true);
+                                }
                                 generator->setTiming(true);
                                 if (cutDepth >= 0)
                                     generator->setWhatDepth(cutDepth) ;
@@ -4447,6 +4437,11 @@ int CbcMain1 (int argc, const char *argv[],
                                     generalMessageHandler->message(CLP_GENERAL, generalMessages)
                                     << generalPrint
                                     << CoinMessageEol;
+#if 1
+				    // some options may have been set already
+				    // e.g. use elapsed time
+                                    babModel_->setMoreSpecialOptions(moreMipOptions|babModel_->moreSpecialOptions());
+#else
                                     OsiClpSolverInterface * osiclp = dynamic_cast< OsiClpSolverInterface*> (babModel_->solver());
                                     if (moreMipOptions == 10000) {
                                         // test memory saving
@@ -4472,6 +4467,7 @@ int CbcMain1 (int argc, const char *argv[],
                                             osiclp->setSpecialOptions(save | osiclp->specialOptions());
                                         }
                                     }
+#endif
                                 }
                             }
                             {
@@ -5637,6 +5633,11 @@ int CbcMain1 (int argc, const char *argv[],
                                     }
                                 }
 #endif
+                                int multipleRoot = parameters_[whichParam(CBC_PARAM_INT_MULTIPLEROOTS, numberParameters_, parameters_)].intValue();
+				babModel_->setMultipleRootTries(multipleRoot);
+                                int specialOptions = parameters_[whichParam(CBC_PARAM_INT_STRONG_STRATEGY, numberParameters_, parameters_)].intValue();
+				if (specialOptions>=0)
+				  babModel_->setStrongStrategy(specialOptions);
                                 babModel_->branchAndBound(statistics);
                                 //#define CLP_FACTORIZATION_INSTRUMENT
 #ifdef CLP_FACTORIZATION_INSTRUMENT
@@ -5769,6 +5770,11 @@ int CbcMain1 (int argc, const char *argv[],
                                     if (model_.fastNodeDepth() == -1)
                                         model_.setFastNodeDepth(-2); // Use Cplex at root
                                 }
+                                int multipleRoot = parameters_[whichParam(CBC_PARAM_INT_MULTIPLEROOTS, numberParameters_, parameters_)].intValue();
+				model_.setMultipleRootTries(multipleRoot);
+                                int specialOptions = parameters_[whichParam(CBC_PARAM_INT_STRONG_STRATEGY, numberParameters_, parameters_)].intValue();
+				if (specialOptions>=0)
+				  model_.setStrongStrategy(specialOptions);
                                 if (!pumpChanged) {
                                     // Make more lightweight
                                     for (int iHeur = 0; iHeur < model_.numberHeuristics(); iHeur++) {
@@ -8787,9 +8793,7 @@ void CbcMain0 (CbcModel  & model)
     parameters[whichParam(CBC_PARAM_STR_GOMORYCUTS, numberParameters, parameters)].setCurrentOption("ifmove");
     parameters[whichParam(CBC_PARAM_STR_PROBINGCUTS, numberParameters, parameters)].setCurrentOption("ifmove");
     parameters[whichParam(CBC_PARAM_STR_KNAPSACKCUTS, numberParameters, parameters)].setCurrentOption("ifmove");
-#ifdef ZERO_HALF_CUTS
     parameters[whichParam(CBC_PARAM_STR_ZEROHALFCUTS, numberParameters, parameters)].setCurrentOption("off");
-#endif
     parameters[whichParam(CBC_PARAM_STR_REDSPLITCUTS, numberParameters, parameters)].setCurrentOption("off");
     parameters[whichParam(CBC_PARAM_STR_CLIQUECUTS, numberParameters, parameters)].setCurrentOption("ifmove");
     parameters[whichParam(CBC_PARAM_STR_MIXEDCUTS, numberParameters, parameters)].setCurrentOption("ifmove");

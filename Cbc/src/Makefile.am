@@ -8,7 +8,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS =
+SUBDIRS = OsiCbc
 
 ########################################################################
 #                               libCbc                                 #
@@ -206,6 +206,7 @@ includecoin_HEADERS = \
 	CbcConsequence.hpp \
 	CbcClique.hpp \
 	CbcCompare.hpp \
+	CbcCountRowCut.hpp \
 	CbcCutGenerator.hpp \
 	CbcCutModifier.hpp \
 	CbcCutSubsetModifier.hpp \
