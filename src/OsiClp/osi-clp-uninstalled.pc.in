@@ -1,0 +1,8 @@
+prefix=@prefix@
+
+Name: OsiClp
+Description: COIN-OR Open Solver Interface for CLP
+Version: @PACKAGE_VERSION@
+Libs: -L@ABSBUILDDIR@/src/OsiClp -lOsiClp @OSICLPLIB_PCLIBS@
+Cflags: -I@abs_source_dir@/src/OsiClp
+Requires: clp @OSICLPLIB_PCREQUIRES@
