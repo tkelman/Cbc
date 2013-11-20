@@ -1,0 +1,115 @@
+# Copyright (C) 2006 International Business Machines and others.
+# All Rights Reserved.
+# This file is distributed under the Common Public License.
+
+# $Id: Makefile.in 726 2006-04-17 04:16:00Z andreasw $
+
+##########################################################################
+#    You can modify this example makefile to fit for your own program.   #
+#    Usually, you only need to change CHANGEME entries below.            #
+##########################################################################
+
+# CHANGEME
+# To compile other examples, either change the following line, or add the
+# argument DRIVER=filename_without_extension to make, e.g.,
+# `make DRIVER=parameters'
+
+DRIVER = basic
+
+# CHANGME
+# This should be the name of your executable; change if you want a name
+# that's different from the file name.
+
+EXE = $(DRIVER)@EXEEXT@
+
+# CHANGEME
+# OBJS should include all object files necessary to build your program. For
+# the examples, only one file is needed for each example. You will probably
+# have more as your code grows.
+
+OBJS =  $(DRIVER).@OBJEXT@
+
+# CHANGEME
+# Additional libraries. The examples require only the COIN libraries specified
+# as LIBS below. You may need more.
+
+ADDLIBS =
+
+# CHANGEME
+# Additional flags for compilation (e.g., include flags). As for libraries,
+# the examples require only COIN include files, specified as part of CXXFLAGS
+# below.
+
+ADDINCFLAGS =
+
+# CHANGEME
+# Directory to the sources for the (example) problem definition files. VPATH
+# is used if you are building in a different directory than the source. This
+# can be handy for various reasons; if none occur to you, don't worry about
+# it.
+
+SRCDIR = @srcdir@
+VPATH = @srcdir@
+
+##########################################################################
+#  Usually, you don't have to change anything below.  Note that if you   #
+#  change certain compiler options, you might have to recompile the      #
+#  package.                                                              #
+##########################################################################
+
+# C++ Compiler command
+CXX = @CXX@
+
+# C++ Compiler options
+CXXFLAGS = @CXXFLAGS@ @OSI_EXAMPLES_SOLVER_CFLAGS@ \
+  -DOSIXXXhpp=\"@OSI_EXAMPLES_SOLVER_NAME@.hpp\" -DOSIXXX=@OSI_EXAMPLES_SOLVER_NAME@
+@COIN_HAS_SAMPLE_TRUE@CXXFLAGS += -DSAMPLEDIR=\"@SAMPLE_DATA@\"
+@COIN_HAS_NETLIB_TRUE@CXXFLAGS += -DNETLIBDIR=\"@NETLIB_DATA@\"
+
+# additional C++ Compiler options for linking
+CXXLINKFLAGS = @RPATH_FLAGS@
+
+# Directory with COIN header files
+COININCDIR = @abs_include_dir@/coin
+
+# Directory with COIN libraries
+COINLIBDIR = @abs_lib_dir@/coin
+
+# Libraries that may be necessary to link with Osi
+LIBS = -L$(COINLIBDIR) \
+       -L$(COINLIBDIR)/ThirdParty \
+       @OSI_EXAMPLES_SOLVER_LIBS@ -lOsi \
+       @OSILIB_LIBS@
+
+# Necessary Include dirs (we use the CYGPATH_W variables to allow
+# compilation with Windows compilers)
+INCL = -I`$(CYGPATH_W) $(COININCDIR)` @COINUTILS_CFLAGS@ $(ADDINCFLAGS)
+
+# The following is necessary under cygwin, if native compilers are used
+CYGPATH_W = @CYGPATH_W@
+
+all: $(EXE)
+
+.SUFFIXES: .cpp .c .o .obj
+
+$(EXE): $(OBJS)
+	bla=;\
+	for file in $(OBJS); do bla="$$bla `$(CYGPATH_W) $$file`"; done; \
+	$(CXX) $(CXXLINKFLAGS) $(CXXFLAGS) -o $@ $$bla $(ADDLIBS) $(LIBS)
+
+clean:
+	rm -rf $(EXE) $(OBJS)
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) $(INCL) -c -o $@ `test -f '$<' || echo '$(SRCDIR)/'`$<
+
+
+.cpp.obj:
+	$(CXX) $(CXXFLAGS) $(INCL) -c -o $@ `if test -f '$<'; then $(CYGPATH_W) '$<'; else $(CYGPATH_W) '$(SRCDIR)/$<'; fi`
+
+.c.o:
+	$(CC) $(CFLAGS) $(INCL) -c -o $@ `test -f '$<' || echo '$(SRCDIR)/'`$<
+
+
+.c.obj:
+	$(CC) $(CFLAGS) $(INCL) -c -o $@ `if test -f '$<'; then $(CYGPATH_W) '$<'; else $(CYGPATH_W) '$(SRCDIR)/$<'; fi`
