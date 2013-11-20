@@ -1,0 +1,8 @@
+prefix=@prefix@
+
+Name: OsiVol
+Description: COIN-OR Open Solver Interface for Vol
+Version: @PACKAGE_VERSION@
+Libs: -L@ABSBUILDDIR@/src/OsiVol -lOsiVol @OSIVOLLIB_PCLIBS@
+Cflags: -I@abs_source_dir@/src/OsiVol
+Requires: vol @OSIVOLLIB_PCREQUIRES@
